@@ -19,7 +19,7 @@ func (ctrl customerController) GetInternalByID(ctx context.Context, _ *http.Requ
 		return adapters.InternalCustomerResponse{}, err
 	}
 
-	name := c.UserResponse.Name
+	name := c.Name
 	if c.Type == domain.CompanyCustomerType.String() {
 		name = c.CompanyName
 	}
