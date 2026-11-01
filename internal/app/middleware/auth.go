@@ -30,7 +30,7 @@ func Auth(routeRoles ...domain.Role) gin.HandlerFunc {
 		userClaims, err := auth.GetClaims(token)
 		if err != nil {
 			if errors.Is(err, jwt.ErrTokenExpired) {
-				c.JSON(http.StatusForbidden, gin.H{"error": "Token expired"})
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Token expired"})
 				c.Abort()
 				return
 			}
