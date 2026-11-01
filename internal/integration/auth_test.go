@@ -156,7 +156,7 @@ func TestLoginResponse_ContainsValidJWT(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 	resp.Body.Close()
 
-	protResp := doRequest(t, http.MethodGet, "/v1/works", nil, result.Token)
+	protResp := doRequest(t, http.MethodGet, "/v1/customers/"+seedCustomerID, nil, result.Token)
 	assert.Equal(t, http.StatusOK, protResp.StatusCode)
 	protResp.Body.Close()
 }

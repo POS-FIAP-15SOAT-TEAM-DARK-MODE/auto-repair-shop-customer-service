@@ -136,6 +136,7 @@ func seedMemory(
 		Type:   customerDomain.IndividualCustomerType,
 		CPF:    "52998224725",
 		Phone:  "11999990001",
+		User:   &authDomain.User{ID: joaoUserID, Name: "João Silva", CoreUser: authDomain.CoreUser{Email: "joao.silva@email.com"}},
 	})
 
 	// Vehicle ABC-1234
