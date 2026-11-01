@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: auto-repair-shop
+  name: customer-service
   labels:
-    app: auto-repair-shop
+    app: customer-service
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: auto-repair-shop
+      app: customer-service
   template:
     metadata:
       labels:
-        app: auto-repair-shop
+        app: customer-service
     spec:
-      serviceAccountName: auto-repair-shop
+      serviceAccountName: customer-service
       # The db-migrate Job and this Deployment are applied by the same
       # `kubectl apply -k`, with no ordering guarantee between them — without
       # this, the app can boot (and run its DB seed) before migrations have
@@ -30,11 +30,11 @@ spec:
             - sh
             - -c
             - |
-              until kubectl get job/db-migrate -n "$POD_NAMESPACE" >/dev/null 2>&1; do
-                echo 'waiting for the db-migrate Job to be created...'
+              until kubectl get job/customer-service-db-migrate -n "$POD_NAMESPACE" >/dev/null 2>&1; do
+                echo 'waiting for the customer-service-db-migrate Job to be created...'
                 sleep 2
               done
-              kubectl wait --for=condition=complete --timeout=300s -n "$POD_NAMESPACE" job/db-migrate
+              kubectl wait --for=condition=complete --timeout=300s -n "$POD_NAMESPACE" job/customer-service-db-migrate
           env:
             - name: POD_NAMESPACE
               valueFrom:
@@ -43,16 +43,16 @@ spec:
       containers:
         - name: app
           # Overridden per overlay via the kustomize `images:` transformer.
-          image: auto-repair-shop:dev
+          image: auto-repair-shop-customer-service:dev
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
-              containerPort: 8080
+              containerPort: 8081
           envFrom:
             - configMapRef:
-                name: app-config
+                name: customer-service-config
             - secretRef:
-                name: app-secrets
+                name: customer-service-secrets
           livenessProbe:
             httpGet:
               path: /ping
