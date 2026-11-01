@@ -98,7 +98,8 @@ func insertSeedData(ctx context.Context, tx *sql.Tx) error {
 	}
 	log.Info("seed: mechanic user inserted", zap.String("user_id", mechanicUserID))
 
-	customerACPF := "529.982.247-25"
+	// Documents are stored digits-only, as the API does (see README, "Documentos").
+	customerACPF := "52998224725"
 	if err := insertIndividualCustomer(ctx, tx, nextRoleID(), customerAUserID, customerACustomer, "João Silva", "joao.silva@email.com", customerACPF, "11999990001", bcryptCost); err != nil {
 		return err
 	}
@@ -109,7 +110,7 @@ func insertSeedData(ctx context.Context, tx *sql.Tx) error {
 	}
 	log.Info("seed: vehicle inserted", zap.String("vehicle_id", customerAVehicle))
 
-	customerBCNPJ := "11.222.333/0001-81"
+	customerBCNPJ := "11222333000181"
 	if err := insertCompanyCustomer(ctx, tx, nextRoleID(), customerBUserID, customerBCustomer, "Transportes Silva Ltda", "contato@transportessilva.com.br", customerBCNPJ, "Auto Transportes Silva", "11988880002", bcryptCost); err != nil {
 		return err
 	}

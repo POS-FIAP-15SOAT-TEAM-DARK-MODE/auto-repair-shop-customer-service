@@ -58,12 +58,12 @@ func TestRunSeed_InsertsStaffAndCustomers(t *testing.T) {
 	// customer A: user + role + customer + vehicle
 	mock.ExpectExec(`INSERT INTO "user"`).WithArgs("44444444-4444-4444-8444-000000000001", sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectExec(`INSERT INTO user_role`).WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec(`INSERT INTO customer \(id, user_id, type, cpf, phone\)`).WithArgs("44444444-4444-4444-8444-000000000002", "44444444-4444-4444-8444-000000000001", "529.982.247-25", "11999990001").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`INSERT INTO customer \(id, user_id, type, cpf, phone\)`).WithArgs("44444444-4444-4444-8444-000000000002", "44444444-4444-4444-8444-000000000001", "52998224725", "11999990001").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectExec(`INSERT INTO vehicle`).WithArgs("44444444-4444-4444-8444-000000000003", "ABC-1234", "Toyota", "Corolla", 2020, "44444444-4444-4444-8444-000000000002").WillReturnResult(sqlmock.NewResult(1, 1))
 	// customer B: user + role + customer + vehicle
 	mock.ExpectExec(`INSERT INTO "user"`).WithArgs("44444444-4444-4444-8444-000000000011", sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectExec(`INSERT INTO user_role`).WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec(`INSERT INTO customer \(id, user_id, type, cnpj, company_name, phone\)`).WithArgs("44444444-4444-4444-8444-000000000012", "44444444-4444-4444-8444-000000000011", "11.222.333/0001-81", "Auto Transportes Silva", "11988880002").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`INSERT INTO customer \(id, user_id, type, cnpj, company_name, phone\)`).WithArgs("44444444-4444-4444-8444-000000000012", "44444444-4444-4444-8444-000000000011", "11222333000181", "Auto Transportes Silva", "11988880002").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectExec(`INSERT INTO vehicle`).WithArgs("44444444-4444-4444-8444-000000000013", "XYZ1A23", "Ford", "Transit", 2022, "44444444-4444-4444-8444-000000000012").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 

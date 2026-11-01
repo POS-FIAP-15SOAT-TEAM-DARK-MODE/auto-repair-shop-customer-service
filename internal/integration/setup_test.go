@@ -125,7 +125,7 @@ func seedMemory(
 	joaoUserID := uuid.NewString()
 	_ = userRepository.Save(ctx, &authDomain.User{
 		ID: joaoUserID, Name: "João Silva",
-		CoreUser: authDomain.CoreUser{Email: "joao.silva@email.com", Password: hashPW("529.982.247-25")},
+		CoreUser: authDomain.CoreUser{Email: "joao.silva@email.com", Password: hashPW("52998224725")},
 	})
 	_ = userRepository.SaveUserRole(ctx, joaoUserID, authDomain.CUSTOMER)
 

@@ -39,7 +39,7 @@ func TestLogin_ValidMechanicCredentials(t *testing.T) {
 func TestLogin_ValidCustomerCredentials(t *testing.T) {
 	body := map[string]string{
 		"email":    "joao.silva@email.com",
-		"password": "529.982.247-25",
+		"password": "52998224725", // initial password = document, digits only
 	}
 	resp := doRequest(t, http.MethodPost, "/v1/auth/login", body, "")
 	assert.Equal(t, http.StatusOK, resp.StatusCode)

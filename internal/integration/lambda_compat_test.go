@@ -15,9 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// seededCustomerACPF is the value the seed writes into customer.cpf (formatted). See README
-// ("Formato do CPF") for why the lambda must receive the CPF exactly as stored.
-const seededCustomerACPF = "529.982.247-25"
+// seededCustomerACPF is the value the seed writes into customer.cpf: digits only, as the API
+// stores it and as the login lambda receives it (see README, "Documentos").
+const seededCustomerACPF = "52998224725"
 
 // lambdaAuthRole is the read-only role used by the login lambda.
 const lambdaAuthRole = "lambda_auth_ro"
