@@ -23,10 +23,21 @@ Internal (service-to-service, header `X-Internal-Token: <INTERNAL_TOKEN>`, never
 
 | Method | Path | Response |
 |---|---|---|
-| GET | `/internal/customers/:id` | `200 {id, user_id, type, name, document}`; `404` |
+| GET | `/internal/customers/:id` | `200 {id, user_id, type, name, email, document, company_name, phone}`; `404` |
 | GET | `/internal/vehicles/:id` | `200 {id, customer_id, license_plate, brand, model, year}`; `404` |
 
-Missing or wrong token: `401`. `name` is the company name for `COMPANY` customers; `document` is returned without formatting.
+Missing or wrong token: `401`.
+
+Example `200` (individual customer; for a `COMPANY` customer `company_name` is the company name and `document` the CNPJ):
+
+```json
+{"id":"44444444-4444-4444-8444-000000000002","user_id":"44444444-4444-4444-8444-000000000001","type":"INDIVIDUAL","name":"João Silva","email":"joao.silva@email.com","document":"52998224725","company_name":null,"phone":"11999990001"}
+```
+
+- `name` is always the user's name, for both types.
+- `company_name` is a string for `COMPANY` and `null` for `INDIVIDUAL`.
+- `document` is always unformatted (CPF 11 digits, CNPJ 14 characters).
+- Contract: `docs/fase4/contracts/internal-rest.md`.
 
 Other: `GET /ping`, `GET /metrics`, `GET /swagger/index.html` (spec in `docs/swagger.yaml`).
 

@@ -143,7 +143,8 @@ func TestSetupRouter_RemovedDomainsAreNotRouted(t *testing.T) {
 
 func TestSetupRouter_InternalRoutes(t *testing.T) {
 	ci := fakeCustomerInternal{resp: customerAdapters.InternalCustomerResponse{
-		ID: "c1", UserID: "u1", Type: "INDIVIDUAL", Name: "João Silva", Document: "52998224725",
+		ID: "c1", UserID: "u1", Type: "INDIVIDUAL", Name: "João Silva", Email: "joao.silva@email.com",
+		Document: "52998224725", CompanyName: nil, Phone: "11999990001",
 	}}
 	vi := fakeVehicleInternal{resp: vehicleAdapters.InternalVehicleResponse{
 		ID: "v1", CustomerID: "c1", LicensePlate: "ABC1D23", Brand: "Fiat", Model: "Uno", Year: 2018,
@@ -164,6 +165,10 @@ func TestSetupRouter_InternalRoutes(t *testing.T) {
 	assert.Equal(t, "c1", body["id"])
 	assert.Equal(t, "u1", body["user_id"])
 	assert.Equal(t, "52998224725", body["document"])
+	assert.Equal(t, "joao.silva@email.com", body["email"])
+	assert.Equal(t, "11999990001", body["phone"])
+	assert.Nil(t, body["company_name"])
+	assert.Len(t, body, 8)
 
 	req = httptest.NewRequest(goHttp.MethodGet, "/internal/vehicles/v1", nil)
 	req.Header.Set("X-Internal-Token", internalToken)

@@ -32,7 +32,7 @@ Role groups in `internal/auth/domain`: `AttendantRoles`, `MechanicRoles`, `Custo
 
 ## Internal routes (`/internal/*`)
 - Service-to-service only; never routed by the gateway. Guarded by `X-Internal-Token` (`INTERNAL_TOKEN`, constant-time compare, fails closed when empty).
-- `GET /internal/customers/{id}` returns `{id, user_id, type, name, document}`; `document` is unformatted.
+- `GET /internal/customers/{id}` returns `{id, user_id, type, name, email, document, company_name, phone}`; `name` is the user name, `company_name` is set only for `COMPANY` (else `null`); `document` is unformatted.
 - `GET /internal/vehicles/{id}` returns `{id, customer_id, license_plate, brand, model, year}`.
 
 ## Input Validation

@@ -26,17 +26,50 @@ func internalGet(t *testing.T, path, token string) *http.Response {
 	return resp
 }
 
-func TestInternalCustomer_OK(t *testing.T) {
+// contractCustomerKeys are the fields of GET /internal/customers/{id} (docs/fase4/contracts/internal-rest.md).
+var contractCustomerKeys = []string{"id", "user_id", "type", "name", "email", "document", "company_name", "phone"}
+
+func assertKeys(t *testing.T, body map[string]any, keys []string) {
+	t.Helper()
+	assert.Len(t, body, len(keys), "unexpected field set: %v", body)
+	for _, k := range keys {
+		_, ok := body[k]
+		assert.True(t, ok, "missing field %q", k)
+	}
+}
+
+func TestInternalCustomer_OK_Individual(t *testing.T) {
 	resp := internalGet(t, "/internal/customers/"+seedCustomerID, internalToken)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var body map[string]any
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	assertKeys(t, body, contractCustomerKeys)
 	assert.Equal(t, seedCustomerID, body["id"])
 	assert.Equal(t, seedUserID, body["user_id"])
 	assert.Equal(t, "INDIVIDUAL", body["type"])
 	assert.Equal(t, "João Silva", body["name"])
+	assert.Equal(t, "joao.silva@email.com", body["email"])
 	assert.Equal(t, "52998224725", body["document"])
+	assert.Nil(t, body["company_name"], "company_name must be null for INDIVIDUAL")
+	assert.Equal(t, "11999990001", body["phone"])
+}
+
+func TestInternalCustomer_OK_Company(t *testing.T) {
+	created := createCompanyCustomer(t, "Auto Transportes", "frota@transportes.com.br", "11.444.777/0001-61", "Transportes Ltda", "11988880099")
+
+	resp := internalGet(t, "/internal/customers/"+created.ID, internalToken)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var body map[string]any
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	assertKeys(t, body, contractCustomerKeys)
+	assert.Equal(t, "COMPANY", body["type"])
+	assert.Equal(t, "Auto Transportes", body["name"], "name is always the user name")
+	assert.Equal(t, "Transportes Ltda", body["company_name"])
+	assert.Equal(t, "frota@transportes.com.br", body["email"])
+	assert.Equal(t, "11444777000161", body["document"])
+	assert.Equal(t, "11988880099", body["phone"])
 }
 
 func TestInternalCustomer_NotFound(t *testing.T) {
