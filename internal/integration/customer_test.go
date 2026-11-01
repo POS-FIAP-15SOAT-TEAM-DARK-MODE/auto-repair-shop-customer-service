@@ -191,3 +191,17 @@ func TestGetCustomerByDocument_MissingQueryParam(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	resp.Body.Close()
 }
+
+// The seed stores documents digits-only, so the seeded customer is found by its plain CPF.
+func TestGetCustomerByDocument_SeededCustomerFound(t *testing.T) {
+	resp := doRequest(t, http.MethodGet, "/v1/customers?document=52998224725", nil, attendantToken(t))
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	got := decodeJSON[customerResponse](t, resp)
+	assert.Equal(t, seedCustomerID, got.ID)
+}
+
+func TestGetCustomerByDocument_InvalidDocumentIsBadRequest(t *testing.T) {
+	resp := doRequest(t, http.MethodGet, "/v1/customers?document=52998224726", nil, attendantToken(t))
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	resp.Body.Close()
+}

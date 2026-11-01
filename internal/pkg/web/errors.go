@@ -112,7 +112,11 @@ func isBadRequestError(err error) bool {
 		errors.Is(err, customerDomain.ErrCompanyNameNotAllowed) ||
 		errors.Is(err, customerDomain.ErrInvalidCustomerType) ||
 		errors.Is(err, customerDomain.ErrInvalidDocumentFormat) ||
-		errors.Is(err, customerDomain.ErrInvalidCustomerId)
+		errors.Is(err, customerDomain.ErrInvalidCustomerId) ||
+		errors.Is(err, customerDomain.ErrInvalidCPF) ||
+		errors.Is(err, customerDomain.ErrCPFLength) ||
+		errors.Is(err, customerDomain.ErrInvalidCNPJ) ||
+		errors.Is(err, customerDomain.ErrCNPJLength)
 }
 
 func isNotFoundError(err error) bool {
@@ -133,6 +137,8 @@ func isInternalServerError(err error) bool {
 func isConflictError(err error) bool {
 	return errors.Is(err, app.ErrDataConflict) ||
 		errors.Is(err, app.ErrInfraConflict) ||
+		// TODO(F6): the delete check for service orders is not performed here anymore (orders live in
+		// service-order-service); it is reintroduced via the internal REST of Service Order in F6.
 		errors.Is(err, customerDomain.ErrCustomerHasServiceOrders)
 }
 

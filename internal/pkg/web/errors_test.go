@@ -68,3 +68,15 @@ func TestIsJoined(t *testing.T) {
 	assert.True(t, web.IsJoined(errors.Join(errors.New("a"), errors.New("b"))))
 	assert.False(t, web.IsJoined(errors.New("a")))
 }
+
+func TestError_InvalidDocumentIsBadRequest(t *testing.T) {
+	for _, err := range []error{
+		customerDomain.ErrInvalidCPF,
+		customerDomain.ErrCPFLength,
+		customerDomain.ErrInvalidCNPJ,
+		customerDomain.ErrCNPJLength,
+	} {
+		status, _ := web.Error(err)
+		assert.Equal(t, http.StatusBadRequest, status, err.Error())
+	}
+}
