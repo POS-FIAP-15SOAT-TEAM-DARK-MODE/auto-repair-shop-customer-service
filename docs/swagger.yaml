@@ -1,0 +1,720 @@
+---
+openapi: 3.0.0
+info:
+  title: Auto-Repair-Shop Customer & Identity API
+  version: 1.0.0
+  description: OpenAPI specification of the customer-service (users, authentication,
+    customers and vehicles). The /internal/* routes are service-to-service and are
+    not documented here.
+servers:
+- url: http://localhost:{PORT}
+  description: Local development server
+  variables:
+    PORT:
+      default: '8080'
+      description: Port number for the server
+security:
+- SessionToken: []
+paths:
+  "/ping":
+    get:
+      summary: Ping the API
+      description: Health check endpoint that returns a simple message.
+      tags:
+      - Health
+      security: []
+      responses:
+        '200':
+          description: Successful ping
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+              example:
+                message: pong
+  "/v1/auth/login":
+    post:
+      summary: Login a user
+      description: Logs in a user and returns a JWT token. Requires email and password.
+      tags:
+      - Auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/UserLoginRequest"
+      responses:
+        '200':
+          description: User logged in successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  expires_in:
+                    type: integer
+        '400':
+          description: Invalid request body or validation failed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/auth/register":
+    post:
+      summary: Register a new user
+      description: Creates a new user account. Requires name, email, password, and
+        confirm_password.
+      tags:
+      - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/UserRegisterRequest"
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/UserResponse"
+        '400':
+          description: Invalid request body or validation failed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/users/{id}/role":
+    patch:
+      summary: Update a user role
+      description: Replaces all current roles of the user with a single new role.
+        Only ADMIN users can perform this operation.
+      tags:
+      - Auth
+      security:
+      - SessionToken: []
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: User UUID
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/UpdateUserRoleRequest"
+      responses:
+        '204':
+          description: User role updated successfully
+        '400':
+          description: Invalid request body, empty role, or invalid role value
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '401':
+          description: Unauthorized (missing or invalid JWT)
+        '403':
+          description: Forbidden (insufficient permissions)
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/customers":
+    post:
+      summary: Create a customer
+      description: Creates a new customer along with a linked user account and assigns
+        the CUSTOMER role. Supports both individual (CPF) and company (CNPJ) types.
+        Alphanumeric CNPJ format is supported (RFB 2243/2024).
+      tags:
+      - Customers
+      security:
+      - SessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/CreateCustomerRequest"
+      responses:
+        '201':
+          description: Customer created successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CustomerResponse"
+        '400':
+          description: Invalid request body or document validation failed (CPF/CNPJ)
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 400
+                errors:
+                - invalid CPF
+        '409':
+          description: CPF, CNPJ or email already registered
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 409
+                error: resource already exists
+        '422':
+          description: Business rule violation (e.g. constraint failure)
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 422
+                error: data violates business constraints
+        '500':
+          description: Unexpected internal error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 500
+                error: Internal Server Error
+    get:
+      summary: Get customer by document
+      description: Returns the customer matching the provided CPF or CNPJ document.
+        Accepts formatted (e.g. `111.444.777-35`) or plain (`11144477735`) values.
+      tags:
+      - Customers
+      parameters:
+      - in: query
+        name: document
+        required: true
+        schema:
+          type: string
+        description: CPF or CNPJ of the customer (formatted or plain digits)
+        example: 111.444.777-35
+      responses:
+        '200':
+          description: Customer found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CustomerResponse"
+        '400':
+          description: Missing or invalid document format
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 400
+                errors:
+                - document must be a valid CPF (11 digits) or CNPJ (14 characters)
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 404
+                error: customer not found
+        '500':
+          description: Unexpected internal error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/customers/{id}":
+    get:
+      summary: Get customer by ID
+      description: Returns the customer with the specified UUID.
+      tags:
+      - Customers
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Customer UUID
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+      responses:
+        '200':
+          description: Customer found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CustomerResponse"
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 404
+                error: customer not found
+        '500':
+          description: Unexpected internal error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    put:
+      summary: Update a customer
+      description: Partially updates name, email and/or phone. All fields are optional
+        — only provided fields are changed. CPF and CNPJ are immutable. Returns 204
+        when the customer does not exist (idempotent).
+      tags:
+      - Customers
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Customer UUID
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/UpdateCustomerRequest"
+      responses:
+        '200':
+          description: Customer updated successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CustomerResponse"
+        '204':
+          description: Customer not found (no-op)
+        '400':
+          description: Validation error (e.g. invalid name format, empty phone)
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 400
+                errors:
+                - the username must be longer than 3 characters and can only contain
+                  letters and spaces
+        '409':
+          description: Email already in use by another account
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 409
+                error: resource already exists
+        '500':
+          description: Unexpected internal error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    delete:
+      summary: Delete a customer
+      description: Removes the customer and its associated user account in a single
+        transaction. Returns 204 on success or when the customer does not exist (idempotent).
+      tags:
+      - Customers
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Customer UUID
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+      responses:
+        '204':
+          description: Customer deleted or not found
+        '500':
+          description: Unexpected internal error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/vehicles":
+    get:
+      summary: Get vehicle by license plate
+      description: Retrieve a vehicle by its normalized license plate. The license
+        plate must follow supported formats (old or Mercosul).
+      tags:
+      - Vehicle
+      security:
+      - SessionToken: []
+      parameters:
+      - in: query
+        name: plate
+        required: true
+        schema:
+          type: string
+        description: License plate (supports old and Mercosul formats)
+      - in: query
+        name: customerId
+        required: true
+        schema:
+          type: string
+        description: customerId to search vehicles
+      - in: query
+        name: page
+        schema:
+          type: integer
+          format: int64
+          default: 1
+          minimum: 1
+        description: Page number (1-based).
+      - in: query
+        name: pageSize
+        schema:
+          type: integer
+          format: int64
+          default: 10
+          minimum: 1
+        description: Number of items per page.
+      responses:
+        '200':
+          description: Vehicle found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/VehicleResponse"
+        '404':
+          description: Vehicle not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: create a new vehicle register
+      description: insert a new vehicle in our database
+      tags:
+      - Vehicle
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/VehicleRequest"
+      responses:
+        '201':
+          description: Successful created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/VehicleResponse"
+        '500':
+          description: Internal Server Error
+        '400':
+          description: Invalid Body Content
+  "/v1/vehicles/{id}":
+    put:
+      summary: update a vehicle register
+      description: update a vehicle in our database
+      tags:
+      - Vehicle
+      parameters:
+      - in: path
+        required: true
+        name: id
+        schema:
+          type: string
+        description: Id of vehicle to be updated.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/VehicleRequest"
+      responses:
+        '200':
+          description: Successful updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/VehicleResponse"
+        '500':
+          description: Internal Server Error
+        '400':
+          description: Invalid Body Content
+    delete:
+      summary: delete a vehicle register
+      description: delete a vehicle in our database
+      tags:
+      - Vehicle
+      parameters:
+      - in: path
+        required: true
+        name: id
+        schema:
+          type: string
+        description: Id of vehicle to be deleted.
+      responses:
+        '204':
+          description: Successful deleted
+        '500':
+          description: Internal Server Error
+        '400':
+          description: Invalid Body Content
+components:
+  securitySchemes:
+    SessionToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    UserRegisterRequest:
+      type: object
+      required:
+      - name
+      - email
+      - password
+      - confirmPassword
+      properties:
+        name:
+          type: string
+          description: Full name of the user
+        email:
+          type: string
+          format: email
+          description: User email address
+        password:
+          type: string
+          format: password
+          description: User password
+        confirmPassword:
+          type: string
+          format: password
+          description: Password confirmation (must match password)
+    UserLoginRequest:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+        password:
+          type: string
+          format: password
+          description: User password
+    UpdateUserRoleRequest:
+      type: object
+      required:
+      - role
+      properties:
+        role:
+          type: string
+          description: New role to be assigned to the user
+          enum:
+          - ADMIN
+          - ATTENDANT
+          - MECHANIC
+          - CUSTOMER
+          example: MECHANIC
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique user identifier
+        name:
+          type: string
+          description: Full name of the user
+        email:
+          type: string
+          format: email
+          description: User email address
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        code:
+          type: integer
+          description: HTTP status code
+        errors:
+          type: array
+          items:
+            type: string
+          description: List of validation/business error messages
+    CreateCustomerRequest:
+      type: object
+      required:
+      - name
+      - email
+      - password
+      - type
+      - document
+      - phone
+      properties:
+        name:
+          type: string
+          example: João Silva
+        email:
+          type: string
+          format: email
+          example: joao@example.com
+        password:
+          type: string
+          minLength: 8
+          example: Secret@123
+        type:
+          type: string
+          enum:
+          - INDIVIDUAL
+          - COMPANY
+          example: INDIVIDUAL
+        document:
+          type: string
+          description: CPF (e.g. 111.444.777-35) for INDIVIDUAL or CNPJ (e.g. 11.222.333/0001-81)
+            for COMPANY. Alphanumeric CNPJ is also accepted (e.g. AB.CDE.FGH/0001-95).
+          example: 111.444.777-35
+        companyName:
+          type: string
+          description: Required when type is COMPANY.
+          example: Empresa SA
+        phone:
+          type: string
+          example: '11999999999'
+    CustomerResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        name:
+          type: string
+          example: João Silva
+        email:
+          type: string
+          example: joao@example.com
+        type:
+          type: string
+          enum:
+          - INDIVIDUAL
+          - COMPANY
+          example: INDIVIDUAL
+        document:
+          type: string
+          description: Sanitized CPF (11 digits) for INDIVIDUAL or CNPJ (14 chars)
+            for COMPANY
+          example: '11144477735'
+        company_name:
+          type: string
+          example: ''
+        phone:
+          type: string
+          example: '11999999999'
+    UpdateCustomerRequest:
+      type: object
+      description: All fields are optional. Only provided fields are updated.
+      properties:
+        name:
+          type: string
+          description: Full name (min 3 chars, letters and spaces only)
+          example: Novo Nome
+        email:
+          type: string
+          format: email
+          example: novo@example.com
+        phone:
+          type: string
+          example: '11888888888'
+    VehicleRequest:
+      type: object
+      required:
+      - brand
+      - licensePlate
+      - customerId
+      - model
+      - year
+      properties:
+        brand:
+          type: string
+          example: chevrolet
+        licensePlate:
+          type: string
+          example: aaa-2a22
+        customerId:
+          type: string
+          format: uuid
+          example: b8415e84-730a-4624-a1c3-74cf59b95d6d
+        model:
+          type: string
+          example: onix
+        year:
+          type: integer
+          example: 2019
+    VehicleResponse:
+      type: object
+      required:
+      - id
+      - licensePlate
+      - brandModel
+      - year
+      - customerId
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 55160da4-d243-4920-9426-5ce97aefb2fc
+        licensePlate:
+          type: string
+          example: AAA2A22
+        brandModel:
+          type: string
+          example: chevrolet - onix
+        year:
+          type: integer
+          example: 2019
+        customerId:
+          type: string
+          format: uuid
+          example: b8415e84-730a-4624-a1c3-74cf59b95d6d
