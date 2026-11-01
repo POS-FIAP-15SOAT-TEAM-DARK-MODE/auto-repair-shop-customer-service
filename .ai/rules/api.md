@@ -1,60 +1,30 @@
 # API
 
-## Versioning
-All endpoints under `/v1/`. Swagger UI at `http://localhost:8080/swagger/index.html`.
+Base path `/v1`. Port `8081`. Errors: `{"code": <http>, "errors": [...]}` or `{"code": <http>, "error": "..."}`.
 
-## Endpoints
+| Method | Path | Roles |
+|---|---|---|
+| POST | /auth/register | ADMIN |
+| POST | /auth/login | public |
+| PATCH | /users/:id/role | ADMIN |
+| POST | /customers | ATTENDANT |
+| GET | /customers?document= | ATTENDANT |
+| GET | /customers/:id | ATTENDANT |
+| PUT | /customers/:id | ATTENDANT |
+| DELETE | /customers/:id | ATTENDANT |
+| GET | /vehicles | ATTENDANT, MECHANIC |
+| POST | /vehicles | ATTENDANT |
+| PUT | /vehicles/:id | ATTENDANT |
+| DELETE | /vehicles/:id | ATTENDANT |
 
-```
-POST   /auth/register                              ADMIN
-POST   /auth/login                                 public
-POST   /customers                                  ADMIN, ATTENDANT
-GET    /customers/:id                              ADMIN, ATTENDANT
-GET    /customers                                  ADMIN, ATTENDANT
-PUT    /customers/:id                              ADMIN, ATTENDANT
-DELETE /customers/:id                              ADMIN, ATTENDANT
-POST   /works                                      ADMIN, ATTENDANT
-GET    /works                                      ADMIN, ATTENDANT, MECHANIC
-PUT    /works/:id                                  ADMIN, ATTENDANT, MECHANIC
-DELETE /works/:id                                  ADMIN, ATTENDANT, MECHANIC
-POST   /vehicles                                   ADMIN, ATTENDANT, MECHANIC
-GET    /vehicles                                   ADMIN, ATTENDANT, MECHANIC  (by license plate)
-PUT    /vehicles/:id                               ADMIN, ATTENDANT, MECHANIC
-DELETE /vehicles/:id                               ADMIN, ATTENDANT, MECHANIC
-GET    /vehicles/:customerId                       ADMIN, ATTENDANT  (list by customer)
-POST   /supplies                                   ADMIN, ATTENDANT, MECHANIC
-GET    /supplies                                   ADMIN, ATTENDANT, MECHANIC
-PUT    /supplies/:id                               ADMIN, ATTENDANT, MECHANIC
-POST   /service-order                              ADMIN, ATTENDANT
-GET    /service-order/:id/history                  ADMIN, ATTENDANT
-GET    /service-order/:id/services                 ADMIN, ATTENDANT
-POST   /service-order/:id/services                 ADMIN, ATTENDANT
-DELETE /service-order/:id/services/:serviceId      ADMIN, ATTENDANT
-GET    /service-order/:id/supplies                 ADMIN, ATTENDANT
-POST   /service-order/:id/supplies                 ADMIN, ATTENDANT
-DELETE /service-order/:id/supplies/:supplyId       ADMIN, ATTENDANT
-```
+Internal (service-to-service, header `X-Internal-Token`, never through the gateway):
 
-## Request/Response Conventions
-- All bodies: JSON.
-- Timestamps: UTC ISO 8601.
-- IDs: UUID strings (ULID strings for service order IDs).
-- Pagination: `?limit=N&offset=N`.
-
-## Error Format
-```json
-{ "error": "Human-readable message", "code": "MACHINE_READABLE_CODE" }
-```
-
-| HTTP | Meaning |
+| Method | Path |
 |---|---|
-| 400 | Validation error |
-| 401 | Missing or invalid auth |
-| 403 | Forbidden (wrong role) |
-| 404 | Not found |
-| 409 | Conflict |
-| 422 | Business rule violation |
-| 500 | Unexpected error |
+| GET | /internal/customers/:id |
+| GET | /internal/vehicles/:id |
 
-## Swagger
-Every endpoint must have: summary, description, request body schema, response schemas (success + errors), 401/403 documented on all protected endpoints, and role requirements noted.
+Conventions:
+- IDs: UUID strings.
+- Public JSON fields are camelCase (`licensePlate`, `customerId`); internal ones are snake_case per `docs/fase4/contracts/internal-rest.md`.
+- Request validation at the handler layer; services never trust raw strings.

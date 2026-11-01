@@ -14,7 +14,7 @@ touch migrations/<NNNNNN>_<description>.down.sql
 ## 3. Write `up.sql`
 Rules:
 - `NUMERIC(10,2)` for monetary columns — never `FLOAT`.
-- `UUID` for most IDs; use ULID pattern only for service order tables.
+- `VARCHAR(36)` UUID for all IDs.
 - `TIMESTAMPTZ DEFAULT NOW()` for timestamps.
 - Add `CHECK` constraints for status/enum columns (list all valid values).
 - Add all required foreign key constraints.

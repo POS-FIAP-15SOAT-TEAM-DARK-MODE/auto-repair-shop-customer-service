@@ -1,7 +1,7 @@
 # Testing
 
 ## Coverage Thresholds
-- Critical domains (service orders, stock, budget): **90% minimum**.
+- Critical domains (authentication, customers): **90% minimum**. Global gate: **80%** (CI `coverage` job).
 - All other domains: **80% minimum**.
 
 ## Commands
@@ -43,9 +43,9 @@ assert.NoError(t, err)
 ## What to Cover
 | Domain | Critical cases |
 |---|---|
-| Status transitions | Valid sequence, `ErrServiceOrderNotNew`, REJECTED terminal |
-| Budget | Works only, supplies only, combined, empty |
+| Login | Valid credentials, wrong password, unknown e-mail, empty payload |
+| Internal routes | 200, 404, 401 with missing or wrong `X-Internal-Token` |
 | CPF / CNPJ / plate | Valid, invalid format, invalid check digits, edge cases |
-| Stock | Success, `ErrSupplyOutOfStock`, conditional UPDATE race prevention |
+| Lambda compatibility | Literal login-lambda queries as `lambda_auth_ro`; write denied (`lambda_compat_test.go`) |
 | RBAC | 403 for out-of-scope roles, 401 for missing JWT |
 | Customer lifecycle | Create → User auto-created; Delete → User deleted |

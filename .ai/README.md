@@ -10,7 +10,7 @@ Single source of truth for all AI agent rules in this project.
   rules/               # topic-scoped rule files — open on demand
     architecture.md        layered arch, UoW, DI root, repository context pattern
     domain.md              ubiquitous language, status lifecycle, RBAC, business rules
-    go-conventions.md      Go idioms, decimal, UUID/ULID, no framework leakage, Mockery
+    go-conventions.md      Go idioms, UUID, no framework leakage, Mockery
     database.md            PostgreSQL conventions, migrations, indexes, FK
     api.md                 endpoint reference, error format, Swagger
     testing.md             coverage thresholds, unit/integration patterns
@@ -29,8 +29,8 @@ Single source of truth for all AI agent rules in this project.
 | Topic | File | Key contents |
 |---|---|---|
 | Architecture | `rules/architecture.md` | Layer diagram, layer contracts, DI root, UoW, QueryBuilder |
-| Domain & Business Rules | `rules/domain.md` | Ubiquitous language, status lifecycle, RBAC, budget, stock |
-| Go Conventions | `rules/go-conventions.md` | Tech stack, UUID/ULID, decimal, no framework leakage, Mockery |
+| Domain & Business Rules | `rules/domain.md` | Ubiquitous language, RBAC, user/customer split, internal routes |
+| Go Conventions | `rules/go-conventions.md` | Tech stack, UUID, no framework leakage, Mockery |
 | Database | `rules/database.md` | NUMERIC(10,2), migrations, indexes, FK constraints |
 | API | `rules/api.md` | Endpoints with roles, error format, Swagger |
 | Testing | `rules/testing.md` | 90%/80% coverage, unit vs integration patterns |

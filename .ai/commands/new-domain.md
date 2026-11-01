@@ -35,7 +35,7 @@ Follow `add-migration.md`. Add table, indexes, and FK constraints.
 ## 8. Tests
 - Unit: service layer with in-memory repo + in-memory UoW (`infra/db/in_memory`).
 - Integration: postgres repo against a real test DB, rolled back after each test.
-- Coverage target: 80% minimum (90% if touches budget, stock, or service order).
+- Coverage target: 80% minimum (90% for authentication and customers).
 
 ## 9. Regenerate Mocks
 ```bash

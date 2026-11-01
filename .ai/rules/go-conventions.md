@@ -1,11 +1,11 @@
 # Go Conventions
 
 ## Tech Stack
-Go 1.26 · Gin · PostgreSQL 15 · `lib/pq` (raw SQL, no ORM) · `golang-migrate` · `golang-jwt/jwt/v5` · Zap · Testify · Mockery v2 · `shopspring/decimal` · `google/uuid` · `oklog/ulid/v2`
+Go 1.26 · Gin · PostgreSQL 15 · `lib/pq` (raw SQL, no ORM) · `golang-migrate` · `golang-jwt/jwt/v5` · Zap · Testify · Mockery v2 · `shopspring/decimal` · `google/uuid`
 
 ## ID Types
-- `google/uuid` — all entity IDs except service orders.
-- `oklog/ulid/v2` — `ServiceOrder` and `ServiceOrderHistory` IDs (sortable by creation time).
+- `google/uuid` — all entity IDs.
+- Customer, user and vehicle IDs are UUIDs (`google/uuid`).
 
 ## Monetary Values
 Always use `shopspring/decimal.Decimal`, never `float64` or `float32`. DB column type: `NUMERIC(10,2)`.

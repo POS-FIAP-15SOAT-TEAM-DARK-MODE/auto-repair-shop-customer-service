@@ -10,7 +10,7 @@ HTTP → Handler (infra/handler/*) → Service (internal/services/*) → Reposit
 
 ## Layer Contracts
 - **Handler**: parse + validate HTTP input, call service, return response — zero business logic.
-- **Service**: all business logic, status enforcement, stock checks, budget recalc.
+- **Service**: all business logic (customer + user creation in one unit of work, role checks, document validation).
 - **Repository**: all SQL via `lib/pq` — no queries outside repositories.
 - **Domain**: framework-free structs + validation methods + service/repository interfaces.
 

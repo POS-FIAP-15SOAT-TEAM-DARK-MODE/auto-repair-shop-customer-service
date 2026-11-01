@@ -6,17 +6,17 @@ Structured JSON via Zap. Initialized in `internal/pkg/logger/logger.go` with cen
 ## Log Levels
 | Level | Use |
 |---|---|
-| `INFO` | Business events (service order created, status changed) |
-| `WARN` | Business rule violations (invalid transition attempt, out-of-stock) |
+| `INFO` | Business events (customer created, role changed) |
+| `WARN` | Business rule violations (invalid credentials, invalid document) |
 | `ERROR` | Unexpected failures (DB errors, unhandled panics) |
 
 ## Canonical Event Names (Issue #236)
 Reuse these — do not invent new names for the same operations:
-- `service_order.created`
-- `service_order.status_transition` — fields: `service_order_id`, `from_status`, `to_status`
-- `service_order.validation_failed`
-- `service_order.status_notification_sent` — customer status notification (e-mail stand-in); `recipient` is masked
-- `service_order.status_notification_failed` — notifier delivery error (best-effort; never fails the transition)
+- `customer.created`
+- `customer.deleted`
+- `user.role_changed`
+- `auth.login_failed` — never logs the submitted credentials, CPF/CNPJ or tokens
+- `internal.auth_failed` — missing or wrong `X-Internal-Token`
 
 ## Sensitive Field Redaction
 The logger automatically redacts keys matching: CPF, CNPJ, password, token, dsn, database_url.

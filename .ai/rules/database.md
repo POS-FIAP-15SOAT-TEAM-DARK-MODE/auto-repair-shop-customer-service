@@ -1,11 +1,12 @@
 # Database
 
+Database `customer` (PostgreSQL 15). Tables: `user`, `role`, `user_role`, `customer`, `vehicle`.
+No foreign keys to other services' databases; no messaging tables (this service publishes and consumes nothing).
+
 ## PostgreSQL 15 Conventions
-- Monetary columns: `NUMERIC(10,2)` — never `FLOAT` or `DOUBLE`.
-- ServiceOrder status: `CHECK` constraint with 7 valid values.
-- IDs: UUID for most entities; ULID for `service_order` and `service_order_history`.
+- IDs: `VARCHAR(36)` UUID.
 - Timestamps: `TIMESTAMPTZ`, UTC, ISO 8601.
-- Junction tables: `service_order_work` (SO ↔ Work), `service_order_supply` (SO ↔ Supply).
+- Documents: `customer.cpf` / `customer.cnpj` are stored sanitized by the API (digits / alphanumerics). See the CPF format note in `README.md`: the seed writes CPF formatted.
 
 ## Migration Strategy
 All schema changes via versioned migration files only:
@@ -29,9 +30,10 @@ make migrate-status  # current version
 See `architecture.md` for the full UoW pattern.
 
 ## Required Indexes
-`customer.cpf`, `customer.cnpj`, `vehicle.license_plate`, `service_order.status`, `service_order.customer_id`, `user.email`.
+`customer.user_id`, `vehicle.customer_id`, `user_role.user_id`, `user_role.role_id`, and the unique columns `user.email`, `customer.cpf`, `customer.cnpj`, `vehicle.license_plate`.
 
 ## Required Foreign Keys
-`vehicle→customer`, `service_order→customer`, `service_order→vehicle`,
-`service_order_work→(service_order, work)`, `service_order_supply→(service_order, supply)`,
-`customer→user`.
+`vehicle→customer`, `customer→user`, `user_role→user`, `user_role→role`.
+
+## Read-only role for the login lambda
+`lambda_auth_ro` only has `SELECT` on this database (see `README.md`, section "Login lambda").

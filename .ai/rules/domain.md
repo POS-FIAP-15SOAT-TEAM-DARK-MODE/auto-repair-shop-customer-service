@@ -1,61 +1,41 @@
 # Domain
 
+Scope of this service: **Customer & Identity** (users, roles, authentication, customers, vehicles).
+Work, supply, stock and service orders belong to other services of the system.
+
 ## Ubiquitous Language
 
 | Code name | Business concept |
 |---|---|
-| `Work` | Billable service: name, description, unit price, ACTIVE/INACTIVE |
-| `Supply` | Part/supply with stock quantity, unit price, optimistic-lock `Version` |
-| `ServiceOrder` | Central aggregate: Customer + Vehicle + []Work + []Supply |
-| `ServiceOrderHistory` | Immutable record of every status transition |
 | `Customer` | Identified by CPF (individual) or CNPJ (company); linked 1:1 to a User |
 | `User` | System account: name, email, bcrypt-hashed password, roles |
 | `Vehicle` | License plate + brand/model/year, always linked to a Customer |
-
-## Service Order Status Lifecycle
-
-```
-NEW → RECEIVED → IN_DIAGNOSIS → AWAITING_APPROVAL → IN_PROGRESS → COMPLETED → DELIVERED
-                                        ↓
-                                   REJECTED (terminal)
-```
-
-`AddWorks`, `RemoveWork`, `AddSupplies`, `RemoveSupply` require status = `NEW` → `ErrServiceOrderNotNew` otherwise.
-Budget becomes immutable once status reaches `IN_PROGRESS`.
 
 ## RBAC
 
 Roles: `ADMIN`, `ATTENDANT`, `MECHANIC`, `CUSTOMER`
 
-| Role | Scope |
+| Role | Scope in this service |
 |---|---|
-| `ADMIN` | Unrestricted, exclusive (cannot combine with other roles) |
-| `ATTENDANT` | Customers, vehicles, service orders, works, supplies — no user management |
-| `MECHANIC` | Read service orders; add/remove works and supplies; status transitions |
-| `CUSTOMER` | Own service order status + own budget approve/reject (scoped by `customerId` in JWT) |
+| `ADMIN` | User registration and role changes (exclusive role) |
+| `ATTENDANT` | Customers and vehicles (write); customers and vehicles (read) |
+| `MECHANIC` | Read vehicles |
+| `CUSTOMER` | Not used by any route here (customers are created by ATTENDANT) |
 
-Role groups in `domain/roles.go`: `AttendantRoles`, `MechanicRoles`, `CustomerRoles`, `AttendantAndMechanicRoles`.
+Role groups in `internal/auth/domain`: `AttendantRoles`, `MechanicRoles`, `CustomerRoles`, `AttendantAndMechanicRoles`.
 
 ## User & Customer Split
-- Creating a Customer automatically creates a linked User with role `CUSTOMER`.
+- Creating a Customer automatically creates a linked User with role `CUSTOMER` (same transaction, `uow`).
 - Default password = CPF (individual) or CNPJ (company), bcrypt-hashed (min cost 12).
-- Deleting a Customer must also delete/deactivate the associated User.
+- Deleting a Customer also deletes the associated User (same transaction).
+- Customer deletion does not check service orders: they live in another service and reference the customer by id only.
 
-## Budget Formula
-```
-total = Σ work.unit_price + Σ (supply.unit_price × quantity)
-```
-Auto-recalculate whenever works or supplies change. Immutable once status reaches `IN_PROGRESS`.
-
-## Stock Decrement Pattern
-```sql
-UPDATE supply SET stock_quantity = stock_quantity - $amount, updated_at = NOW()
-WHERE id = $id AND stock_quantity >= $amount
-```
-If `RowsAffected == 0` → return `ErrSupplyOutOfStock`. No `SELECT FOR UPDATE` — the conditional UPDATE itself prevents overselling. Stock restored on `RemoveSupply` via `RestoreStock` in the same transaction.
+## Internal routes (`/internal/*`)
+- Service-to-service only; never routed by the gateway. Guarded by `X-Internal-Token` (`INTERNAL_TOKEN`, constant-time compare, fails closed when empty).
+- `GET /internal/customers/{id}` returns `{id, user_id, type, name, document}`; `document` is unformatted.
+- `GET /internal/vehicles/{id}` returns `{id, customer_id, license_plate, brand, model, year}`.
 
 ## Input Validation
 - CPF: format `###.###.###-##` + check digit algorithm.
-- CNPJ: format `##.###.###/####-##` + check digit algorithm.
+- CNPJ: format `##.###.###/####-##` + check digit algorithm (alphanumeric CNPJ supported).
 - License plate: old `ABC-1234` and Mercosul `ABC1D23`.
-- Monetary: `NUMERIC(10,2)` — never `float64`.
