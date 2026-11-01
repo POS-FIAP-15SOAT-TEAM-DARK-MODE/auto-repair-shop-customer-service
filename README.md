@@ -41,7 +41,7 @@ docker compose down -v
 
 `make up` / `make down` are the same commands. Without Docker: `make run` with a reachable Postgres.
 
-The seed (`SEED_ENABLED=true`, only when the `customer` table is empty) creates the staff users `attendant@autorepairshop.com` / `mechanic@autorepairshop.com`, customers A (João Silva, CPF `529.982.247-25`) and B (Transportes Silva Ltda, CNPJ `11.222.333/0001-81`) and their vehicles, with the fixed IDs of `docs/fase4/contracts/resources.md`. The admin user `admin@email.com` comes from migration `000002`.
+The seed (`SEED_ENABLED=true`, only when the `customer` table is empty) creates the staff users `attendant@autorepairshop.com` / `mechanic@autorepairshop.com`, customers A (João Silva, CPF `52998224725`) and B (Transportes Silva Ltda, CNPJ `11222333000181`) and their vehicles, with the fixed IDs of `docs/fase4/contracts/resources.md`. Their initial passwords are the digits-only document. The admin user `admin@email.com` comes from migration `000002`.
 
 ## Database
 
@@ -60,14 +60,11 @@ The login lambda connects as `lambda_auth_ro` (`SELECT` only) to database `custo
   In the Lab this is done by the bootstrap Job of the infrastructure repository.
 - The integration test `lambda_compat_test.go` creates the role and grants itself, so it also runs in CI.
 
-#### Formato do CPF
+#### Documentos
 
-Verified in the code and the seed:
+CPF and CNPJ are **always stored without formatting**: CPF as 11 digits (`52998224725`), CNPJ as 14 characters (`11222333000181`, alphanumeric CNPJs included). The API sanitizes input before saving and searching (`GET /v1/customers?document=…` accepts formatted or plain values), and the seed writes the plain form too. The login lambda therefore receives and compares the plain form, as in `{"cpf":"52998224725"}`.
 
-- The API stores `customer.cpf` **sanitized (digits only)**: `ParseDocument`/`NewCustomer` strip formatting before saving.
-- The **seed** inserts the CPF **formatted** (`529.982.247-25`) because it writes SQL directly.
-
-Therefore the lambda must receive the CPF **exactly as stored**. For customers created through the API that is the 11 digits; for the seeded customer A it is `529.982.247-25`. This mismatch is an open point (see the PR): the recommended fix is to make the seed store digits only.
+Databases seeded before this change contain formatted documents. Recreate them with `docker compose down -v` (or drop the `customer` table data) before using the seed again.
 
 ## Configuration
 
@@ -90,7 +87,16 @@ make coverage             # coverage.out + HTML
 make test-integration     # needs Postgres with the migrations applied (CI does it with a service container)
 ```
 
-Unit tests run without a database. Integration tests (`//go:build integration`) cover auth, customers, vehicles, the internal routes and the lambda compatibility. CI enforces at least 80% total coverage (`coverage` job).
+Unit tests run without a database. Integration tests (`//go:build integration`) cover auth, customers, vehicles, the internal routes and the lambda compatibility.
+
+Coverage gate: the CI `coverage` job requires at least **80%** total coverage **excluding generated mocks** (`/mocks/` paths, mockery output), the same exclusion as `sonar.exclusions=**/mocks/**` in `sonar-project.properties`. Current result: 90.2% without mocks (55.8% if the mocks are counted).
+
+## Limitações conhecidas
+
+- **Exclusão de cliente sem checagem de ordens de serviço.** `DELETE /v1/customers/:id` não verifica ordens de serviço: elas moram em outro serviço e este serviço não tem acesso à tabela. A verificação será reintroduzida via REST interno do Service Order na fase F6 (`TODO(F6)` em `internal/pkg/web/errors.go` e `internal/customer/domain/customer_errors.go`).
+- **Login do admin não verificado.** A senha original do `admin@email.com` não está documentada no repositório. O hash bcrypt foi copiado literalmente da migration `000002` do monólito, sem alteração.
+- **Lint local.** `golangci-lint` v2.15 aponta 8 itens em código copiado do monólito (`internal/pkg/db/*`, `internal/customer/domain/customer.go`), sem alteração. O pre-commit do CI usa a versão fixada no `.pre-commit-config.yaml`.
+
 
 ## Kubernetes
 

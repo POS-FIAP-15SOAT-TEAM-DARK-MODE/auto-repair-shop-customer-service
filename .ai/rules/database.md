@@ -6,7 +6,7 @@ No foreign keys to other services' databases; no messaging tables (this service 
 ## PostgreSQL 15 Conventions
 - IDs: `VARCHAR(36)` UUID.
 - Timestamps: `TIMESTAMPTZ`, UTC, ISO 8601.
-- Documents: `customer.cpf` / `customer.cnpj` are stored sanitized by the API (digits / alphanumerics). See the CPF format note in `README.md`: the seed writes CPF formatted.
+- Documents: `customer.cpf` / `customer.cnpj` are always stored without formatting (CPF 11 digits, CNPJ 14 characters), by the API and by the seed. See "Documentos" in `README.md`.
 
 ## Migration Strategy
 All schema changes via versioned migration files only:

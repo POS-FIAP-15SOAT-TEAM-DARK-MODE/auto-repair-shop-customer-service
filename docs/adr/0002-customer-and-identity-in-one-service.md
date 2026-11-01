@@ -24,7 +24,7 @@ Service order, work, supply and stock live in other services and keep no copy of
 
 ## Consequences
 
-- Customer deletion no longer checks for service orders (they are in another database). Whether a customer with open service orders may be deleted is now a rule the caller must enforce, or a future internal query must answer. Tracked as an open point in the PR.
+- Customer deletion no longer checks for service orders (they are in another database). Whether a customer with open service orders may be deleted is now a rule the caller must enforce, or a future internal query must answer. Reintroduced in F6 through the internal REST of Service Order (`TODO(F6)` in the code). Until then, deleting a customer with open orders is not blocked by this service; see README, "Limitações conhecidas".
 - Customer and user changes stay atomic without distributed transactions.
 - The lambda compatibility is covered by an integration test (`internal/integration/lambda_compat_test.go`) that runs the two literal queries as `lambda_auth_ro` and checks that writes are denied.
 - The `JWT_SECRET` is shared by every service that validates tokens; rotation requires a coordinated change (same value in all secrets).
