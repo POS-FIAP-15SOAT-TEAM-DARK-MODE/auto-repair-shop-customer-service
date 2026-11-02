@@ -119,7 +119,7 @@ func TestService_Delete_UnitOfWorkFailureKeepsCustomer(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	failing := NewService(failingUoW{}, svc.customerRepo, svc.authRepo)
+	failing := NewService(failingUoW{}, svc.customerRepo, svc.authRepo, &fakeOrders{})
 	err = failing.Delete(ctx, created.ID)
 	assert.EqualError(t, err, "unit of work unavailable")
 
@@ -145,7 +145,7 @@ func TestService_LookupFailuresAreReturned(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	broken := NewService(uow.NewInMemoryUoW(), listFailingRepo{svc.customerRepo}, svc.authRepo)
+	broken := NewService(uow.NewInMemoryUoW(), listFailingRepo{svc.customerRepo}, svc.authRepo, &fakeOrders{})
 	_, err = broken.GetByID(ctx, created.ID)
 	assert.EqualError(t, err, "database unavailable")
 	_, err = broken.GetByDocument(ctx, "529.982.247-25")
@@ -154,7 +154,7 @@ func TestService_LookupFailuresAreReturned(t *testing.T) {
 	assert.EqualError(t, err, "database unavailable")
 	assert.EqualError(t, broken.Delete(ctx, created.ID), "database unavailable")
 
-	failing := NewService(failingUoW{}, svc.customerRepo, svc.authRepo)
+	failing := NewService(failingUoW{}, svc.customerRepo, svc.authRepo, &fakeOrders{})
 	_, err = failing.Update(ctx, created.ID, adapters.UpdateCustomerRequest{Name: "Ana", Email: "ana@email.com", Phone: "11999990004"})
 	assert.EqualError(t, err, "unit of work unavailable")
 }
