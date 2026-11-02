@@ -18,11 +18,6 @@ import (
 
 // ─── Response types ───────────────────────────────────────────────────────────
 
-type errorResponse struct {
-	Error string `json:"error"`
-	Code  string `json:"code"`
-}
-
 type loginResponse struct {
 	Token     string `json:"token"`
 	ExpiresIn int    `json:"expires_in"`
@@ -83,13 +78,6 @@ func mechanicToken(t *testing.T) string {
 	return tok
 }
 
-func customerToken(t *testing.T, userID string) string {
-	t.Helper()
-	tok, err := auth.GenerateToken(userID, []authDomain.Role{authDomain.CUSTOMER}, time.Now().Add(time.Hour))
-	require.NoError(t, err)
-	return tok
-}
-
 // ─── HTTP client helpers ──────────────────────────────────────────────────────
 
 func doRequest(t *testing.T, method, path string, body any, token string) *http.Response {
@@ -123,14 +111,6 @@ func decodeJSON[T any](t *testing.T, resp *http.Response) T {
 	var out T
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&out))
 	return out
-}
-
-func readBody(t *testing.T, resp *http.Response) []byte {
-	t.Helper()
-	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	return b
 }
 
 // ─── Fixture helpers ──────────────────────────────────────────────────────────
@@ -198,7 +178,6 @@ func readBodyStr(t *testing.T, resp *http.Response) string {
 var (
 	cpfCounter   int64
 	emailCounter int64
-	plateCounter int64
 	phoneCounter int64 = 11900000000
 )
 
@@ -247,12 +226,6 @@ func nextCPF() string {
 func nextEmail() string {
 	emailCounter++
 	return fmt.Sprintf("test%d@integration.test", emailCounter)
-}
-
-// nextPlate generates a unique license plate in old format (ITG-NNNN).
-func nextPlate() string {
-	plateCounter++
-	return fmt.Sprintf("ITG-%04d", plateCounter)
 }
 
 func nextPhone() string {
