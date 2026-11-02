@@ -17,18 +17,18 @@ Roles: `ADMIN`, `ATTENDANT`, `MECHANIC`, `CUSTOMER`
 
 | Role | Scope in this service |
 |---|---|
-| `ADMIN` | User registration and role changes (exclusive role) |
+| `ADMIN` | User registration and role changes (exclusive role); also accepted by every role group below |
 | `ATTENDANT` | Customers and vehicles (write); customers and vehicles (read) |
 | `MECHANIC` | Read vehicles |
 | `CUSTOMER` | Not used by any route here (customers are created by ATTENDANT) |
 
-Role groups in `internal/auth/domain`: `AttendantRoles`, `MechanicRoles`, `CustomerRoles`, `AttendantAndMechanicRoles`.
+Role groups in `internal/auth/domain/auth.go`: `AttendantRoles` (ATTENDANT, ADMIN), `MechanicRoles` (MECHANIC, ADMIN), `CustomerRoles` (CUSTOMER, ADMIN), `AttendantAndMechanicRoles` (ATTENDANT, MECHANIC, ADMIN). Because of this, ADMIN also passes the customer and vehicle routes.
 
 ## User & Customer Split
 - Creating a Customer automatically creates a linked User with role `CUSTOMER` (same transaction, `uow`).
 - Default password = CPF (individual) or CNPJ (company), bcrypt-hashed (min cost 12).
 - Deleting a Customer also deletes the associated User (same transaction).
-- Customer deletion does not check service orders: they live in another service and reference the customer by id only.
+- Before deleting, the Service Order service is asked (`GET /internal/service-orders/exists?customer_id=`, via `internal/clients/serviceorder`): with orders → `409`; Service Order unavailable → `502`, nothing deleted. Vehicles follow the same rule (`vehicle_id`).
 
 ## Internal routes (`/internal/*`)
 - Service-to-service only; never routed by the gateway. Guarded by `X-Internal-Token` (`INTERNAL_TOKEN`, constant-time compare, fails closed when empty).
