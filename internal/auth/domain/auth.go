@@ -180,7 +180,7 @@ func (c *CoreUser) HashPassword(ctx context.Context) error {
 			return ErrUserPasswordTooLong
 		}
 
-		logger.Of(ctx).Warn("HashPassword failed: bcrypt error", zap.String("email", c.Email), zap.Error(err))
+		logger.Of(ctx).Warn("user.hash_failed", zap.String("email", c.Email), zap.Error(err))
 		return err
 	}
 	c.Password = string(hash)

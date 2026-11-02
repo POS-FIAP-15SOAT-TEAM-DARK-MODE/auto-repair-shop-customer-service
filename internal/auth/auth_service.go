@@ -7,7 +7,9 @@ import (
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/auth/domain"
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/auth/interfaces"
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/pkg/id"
+	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/pkg/logger"
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/pkg/uow"
+	"go.uber.org/zap"
 )
 
 type service struct {
@@ -84,7 +86,13 @@ func (s service) ChangeRole(ctx context.Context, userId string, data adapters.Ch
 		return err
 	}
 
-	return s.uow.Execute(ctx, func(ctx context.Context) error {
+	err := s.uow.Execute(ctx, func(ctx context.Context) error {
 		return s.repo.SaveUserRole(ctx, userId, data.Role)
 	})
+	if err != nil {
+		return err
+	}
+
+	logger.Of(ctx).Info("user.role_changed", zap.String("user_id", userId), zap.String("role", string(data.Role)))
+	return nil
 }
