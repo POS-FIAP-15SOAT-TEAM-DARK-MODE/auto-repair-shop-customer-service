@@ -3,6 +3,7 @@ package logger
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -17,6 +18,9 @@ type customLogger struct {
 }
 
 type ctxKey struct{}
+
+// defaultServiceName is the value of the `service` field when SERVICE_NAME is not set.
+const defaultServiceName = "customer-service"
 
 var (
 	globalLog  *customLogger
@@ -44,7 +48,11 @@ func initLogger() *zap.Logger {
 		panic(err)
 	}
 
-	return l
+	return l.With(zap.String("service", serviceName()))
+}
+
+func serviceName() string {
+	return env.GetString("SERVICE_NAME", defaultServiceName)
 }
 
 func getLogLevel(level string) zap.AtomicLevel {
@@ -72,7 +80,7 @@ func Request(ctx context.Context, incomingID string) (context.Context, string) {
 	if reqId == "" {
 		reqId = uuid.New().String()
 	}
-	l := initLogger().With(
+	l := globalLog.Logger.With(
 		zap.String("request_id", reqId),
 	)
 	return withContext(ctx, &customLogger{l}), reqId
@@ -141,11 +149,36 @@ func sanitizeFields(fields []zap.Field) []zap.Field {
 	return sanitized
 }
 
+// RedactQuery returns a raw URL query with the values of sensitive parameters
+// (CPF, CNPJ, tokens) replaced by [REDACTED]. Other pairs are kept as received.
+func RedactQuery(rawQuery string) string {
+	if rawQuery == "" {
+		return ""
+	}
+
+	pairs := strings.Split(rawQuery, "&")
+	for i, pair := range pairs {
+		rawKey, _, _ := strings.Cut(pair, "=")
+		key, err := url.QueryUnescape(rawKey)
+		if err != nil {
+			pairs[i] = "[REDACTED]"
+			continue
+		}
+		if isSensitiveKey(strings.ToLower(key)) {
+			pairs[i] = rawKey + "=[REDACTED]"
+		}
+	}
+	return strings.Join(pairs, "&")
+}
+
 func isSensitiveKey(key string) bool {
 	return key == "password" ||
 		key == "senha" ||
 		key == "pwd" ||
 		key == "token" ||
+		key == "jwt" ||
+		key == "access_token" ||
+		key == "x-internal-token" ||
 		key == "authorization" ||
 		key == "cpf" ||
 		key == "cnpj" ||

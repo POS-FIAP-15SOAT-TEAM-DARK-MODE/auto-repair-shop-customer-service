@@ -30,11 +30,11 @@ func Logger() gin.HandlerFunc {
 		fields := []zap.Field{
 			zap.String("method", c.Request.Method),
 			zap.String("path", path),
-			zap.String("query", query),
+			zap.String("query", logger.RedactQuery(query)),
 			zap.String("ip", c.ClientIP()),
 		}
 
-		logger.Of(ctx).Info("starting request", fields...)
+		logger.Of(ctx).Info("request.started", fields...)
 
 		c.Next()
 
@@ -49,6 +49,6 @@ func Logger() gin.HandlerFunc {
 			return
 		}
 
-		logger.Of(ctx).Info("ending request", fields...)
+		logger.Of(ctx).Info("request.completed", fields...)
 	}
 }
