@@ -13,7 +13,7 @@ Format:
 
 Types: `feat` · `fix` · `refactor` · `test` · `chore` · `docs` · `perf` · `style` · `revert`
 
-Scopes: `customer` · `vehicle` · `auth` · `user` · `bootstrap` · `internal` · `infra` · `db` · `api` · `integration`
+Scopes: `customer` · `vehicle` · `auth` · `user` · `bootstrap` · `internal` · `infra` · `db` · `api` · `integration` · `web` · `middleware` · `clients`
 
 Rules:
 - Subject max 72 chars, lowercase, no trailing period.
