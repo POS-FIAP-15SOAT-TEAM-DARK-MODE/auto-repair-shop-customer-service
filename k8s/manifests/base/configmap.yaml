@@ -18,3 +18,4 @@ data:
   PORT: "8081"
   POSTGRES_SSLMODE: "disable"
   SEED_ENABLED: "false"
+  SERVICE_ORDER_URL: "http://service-order-service:8086"
