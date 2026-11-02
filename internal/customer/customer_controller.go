@@ -22,7 +22,7 @@ func NewController(svc interfaces.CustomerService) *customerController {
 func (ctrl customerController) Create(ctx context.Context, req *http.Request) (adapters.CustomerResponse, error) {
 	dto := adapters.CreateCustomerRequest{}
 	if err := json.ParseJsonBodyToStruct(req.Body, &dto); err != nil {
-		logger.Of(ctx).Debug("Failed to bind create customer payload",
+		logger.Of(ctx).Debug("customer.create_payload_invalid",
 			zap.String("operation", "create_customer"),
 			zap.Error(err),
 			zap.String("entity", "customer"),
@@ -32,7 +32,7 @@ func (ctrl customerController) Create(ctx context.Context, req *http.Request) (a
 
 	resp, err := ctrl.svc.Create(ctx, dto)
 	if err != nil {
-		logger.Of(ctx).Debug("Failed to create customer",
+		logger.Of(ctx).Debug("customer.create_failed",
 			zap.String("operation", "create_customer"),
 			zap.Error(err),
 			zap.String("entity", "customer"),
@@ -47,7 +47,7 @@ func (ctrl customerController) GetByDocument(ctx context.Context, req *http.Requ
 	document := req.URL.Query().Get("document")
 	resp, err := ctrl.svc.GetByDocument(ctx, document)
 	if err != nil {
-		logger.Of(ctx).Debug("Failed to get customer",
+		logger.Of(ctx).Debug("customer.get_failed",
 			zap.String("operation", "get_by_document"),
 			zap.Error(err),
 			zap.String("entity", "customer"),
@@ -62,7 +62,7 @@ func (ctrl customerController) GetByID(ctx context.Context, _ *http.Request) (ad
 	id, _ := ctx.Value("id").(string)
 	resp, err := ctrl.svc.GetByID(ctx, id)
 	if err != nil {
-		logger.Of(ctx).Debug("Failed to get customer",
+		logger.Of(ctx).Debug("customer.get_failed",
 			zap.String("operation", "get_by_id"),
 			zap.Error(err),
 			zap.String("entity", "customer"),
@@ -76,7 +76,7 @@ func (ctrl customerController) GetByID(ctx context.Context, _ *http.Request) (ad
 func (ctrl customerController) Update(ctx context.Context, req *http.Request) (adapters.CustomerResponse, error) {
 	dto := adapters.UpdateCustomerRequest{}
 	if err := json.ParseJsonBodyToStruct(req.Body, &dto); err != nil {
-		logger.Of(ctx).Debug("Failed to bind update customer payload",
+		logger.Of(ctx).Debug("customer.update_payload_invalid",
 			zap.String("operation", "update_customer"),
 			zap.Error(err),
 			zap.String("entity", "customer"),
@@ -87,7 +87,7 @@ func (ctrl customerController) Update(ctx context.Context, req *http.Request) (a
 	id, _ := ctx.Value("id").(string)
 	resp, err := ctrl.svc.Update(ctx, id, dto)
 	if err != nil {
-		logger.Of(ctx).Debug("Failed to update customer",
+		logger.Of(ctx).Debug("customer.update_failed",
 			zap.String("operation", "update_customer"),
 			zap.Error(err),
 			zap.String("entity", "customer"),
@@ -101,7 +101,7 @@ func (ctrl customerController) Update(ctx context.Context, req *http.Request) (a
 func (ctrl customerController) Delete(ctx context.Context, req *http.Request) error {
 	id, _ := ctx.Value("id").(string)
 	if err := ctrl.svc.Delete(ctx, id); err != nil {
-		logger.Of(ctx).Debug("Failed to delete customer",
+		logger.Of(ctx).Debug("customer.delete_failed",
 			zap.String("operation", "delete_customer"),
 			zap.Error(err),
 			zap.String("entity", "customer"),

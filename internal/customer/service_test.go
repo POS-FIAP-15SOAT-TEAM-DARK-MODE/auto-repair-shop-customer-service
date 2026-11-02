@@ -2,11 +2,13 @@ package customer
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	authRepo "github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/auth/repository"
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/customer/adapters"
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/customer/domain"
+	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/customer/interfaces"
 	customerRepo "github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/customer/repository"
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/pkg/uow"
 	"github.com/stretchr/testify/assert"
@@ -100,4 +102,59 @@ func TestService_Update_NotFound(t *testing.T) {
 	svc, ctx := setupService(t)
 	_, err := svc.Update(ctx, "missing", adapters.UpdateCustomerRequest{Name: "X"})
 	assert.ErrorIs(t, err, domain.ErrCustomerNotFound)
+}
+
+// failingUoW is a hand-written executor whose steps never run, used to reach the error path after a lookup.
+type failingUoW struct{}
+
+func (failingUoW) Execute(context.Context, ...uow.Step) error {
+	return errors.New("unit of work unavailable")
+}
+
+func TestService_Delete_UnitOfWorkFailureKeepsCustomer(t *testing.T) {
+	svc, ctx := setupService(t)
+	created, err := svc.Create(ctx, adapters.CreateCustomerRequest{
+		Name: "Maria Souza", Email: "maria@email.com", Type: "INDIVIDUAL",
+		Document: "529.982.247-25", Phone: "11999990003",
+	})
+	require.NoError(t, err)
+
+	failing := NewService(failingUoW{}, svc.customerRepo, svc.authRepo)
+	err = failing.Delete(ctx, created.ID)
+	assert.EqualError(t, err, "unit of work unavailable")
+
+	got, err := svc.GetByID(ctx, created.ID)
+	require.NoError(t, err)
+	assert.Equal(t, created.ID, got.ID)
+}
+
+// listFailingRepo keeps the real Save/Delete of the in-memory repository but fails every List call.
+type listFailingRepo struct {
+	interfaces.CustomerRepository
+}
+
+func (listFailingRepo) List(context.Context, adapters.ListCustomerParams) ([]domain.Customer, error) {
+	return nil, errors.New("database unavailable")
+}
+
+func TestService_LookupFailuresAreReturned(t *testing.T) {
+	svc, ctx := setupService(t)
+	created, err := svc.Create(ctx, adapters.CreateCustomerRequest{
+		Name: "Ana Lima", Email: "ana@email.com", Type: "INDIVIDUAL",
+		Document: "529.982.247-25", Phone: "11999990004",
+	})
+	require.NoError(t, err)
+
+	broken := NewService(uow.NewInMemoryUoW(), listFailingRepo{svc.customerRepo}, svc.authRepo)
+	_, err = broken.GetByID(ctx, created.ID)
+	assert.EqualError(t, err, "database unavailable")
+	_, err = broken.GetByDocument(ctx, "529.982.247-25")
+	assert.EqualError(t, err, "database unavailable")
+	_, err = broken.Update(ctx, created.ID, adapters.UpdateCustomerRequest{Name: "Ana"})
+	assert.EqualError(t, err, "database unavailable")
+	assert.EqualError(t, broken.Delete(ctx, created.ID), "database unavailable")
+
+	failing := NewService(failingUoW{}, svc.customerRepo, svc.authRepo)
+	_, err = failing.Update(ctx, created.ID, adapters.UpdateCustomerRequest{Name: "Ana", Email: "ana@email.com", Phone: "11999990004"})
+	assert.EqualError(t, err, "unit of work unavailable")
 }

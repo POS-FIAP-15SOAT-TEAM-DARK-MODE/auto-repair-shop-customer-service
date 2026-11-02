@@ -57,7 +57,7 @@ func (r *postgresRepository) Save(ctx context.Context, c *domain.Customer) error
 	)
 	if err != nil {
 		mapped := pgPkg.Error(ctx, err)
-		logger.Of(ctx).Warn("customer repository: failed to save customer",
+		logger.Of(ctx).Warn("customer.save_failed",
 			zap.String("operation", "save_customer"),
 			zap.String("entity_id", c.ID),
 			zap.Error(err),
