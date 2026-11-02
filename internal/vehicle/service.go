@@ -19,13 +19,15 @@ type vehicleService struct {
 	uow         uow.Executor
 	repo        interfaces.VehicleRepository
 	idGenerator id.Generator
+	orders      interfaces.ServiceOrderChecker
 }
 
-func NewService(uow uow.Executor, repo interfaces.VehicleRepository, idGenerator id.Generator) *vehicleService {
+func NewService(uow uow.Executor, repo interfaces.VehicleRepository, idGenerator id.Generator, orders interfaces.ServiceOrderChecker) *vehicleService {
 	return &vehicleService{
 		uow:         uow,
 		repo:        repo,
 		idGenerator: idGenerator,
+		orders:      orders,
 	}
 }
 
@@ -149,6 +151,16 @@ func (svc *vehicleService) Edit(ctx context.Context, id string, vehicleAdapter a
 func (svc *vehicleService) Delete(ctx context.Context, id string) error {
 	if id == "" {
 		return domain.ErrInvalidVehicleId
+	}
+
+	// A vehicle with service orders cannot be deleted. An unavailable Service Order answers an
+	// error, so nothing is deleted when the answer is unknown.
+	hasOrders, err := svc.orders.HasVehicleOrders(ctx, id)
+	if err != nil {
+		return err
+	}
+	if hasOrders {
+		return domain.ErrVehicleHasServiceOrders
 	}
 
 	return svc.uow.Execute(ctx, func(transactionContext context.Context) error {

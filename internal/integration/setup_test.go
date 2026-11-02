@@ -44,6 +44,14 @@ var (
 // internalToken is the INTERNAL_TOKEN used by the test server (set before the router is built).
 const internalToken = "integration-internal-token"
 
+// noServiceOrders stands in for the Service Order service, which is not running in these tests:
+// no customer or vehicle has orders. The client itself is covered by its unit tests.
+type noServiceOrders struct{}
+
+func (noServiceOrders) HasCustomerOrders(context.Context, string) (bool, error) { return false, nil }
+
+func (noServiceOrders) HasVehicleOrders(context.Context, string) (bool, error) { return false, nil }
+
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
 	_ = os.Setenv("INTERNAL_TOKEN", internalToken)
@@ -59,12 +67,12 @@ func TestMain(m *testing.M) {
 
 	// Customer
 	custRepository := customerRepoImpl.NewInMemory()
-	custSvc := customerPkg.NewService(noopUoW, custRepository, userRepository)
+	custSvc := customerPkg.NewService(noopUoW, custRepository, userRepository, noServiceOrders{})
 	custCtrl := customerPkg.NewController(custSvc)
 
 	// Vehicle
 	vehicleRepository := vehicleRepo.NewInMemory()
-	vehicleSvc := vehiclePkg.NewService(noopUoW, vehicleRepository, idGen)
+	vehicleSvc := vehiclePkg.NewService(noopUoW, vehicleRepository, idGen, noServiceOrders{})
 	vehicleCtrl := vehiclePkg.NewController(vehicleSvc)
 
 	memUserRepo = userRepository

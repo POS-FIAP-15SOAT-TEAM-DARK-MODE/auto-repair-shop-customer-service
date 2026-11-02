@@ -16,10 +16,11 @@ type customerService struct {
 	uow          uow.Executor
 	customerRepo interfaces.CustomerRepository
 	authRepo     authInterfaces.AuthRepository
+	orders       interfaces.ServiceOrderChecker
 }
 
-func NewService(u uow.Executor, customerRepo interfaces.CustomerRepository, authRepo authInterfaces.AuthRepository) interfaces.CustomerService {
-	return &customerService{uow: u, customerRepo: customerRepo, authRepo: authRepo}
+func NewService(u uow.Executor, customerRepo interfaces.CustomerRepository, authRepo authInterfaces.AuthRepository, orders interfaces.ServiceOrderChecker) interfaces.CustomerService {
+	return &customerService{uow: u, customerRepo: customerRepo, authRepo: authRepo, orders: orders}
 }
 
 func (s *customerService) Create(ctx context.Context, req adapters.CreateCustomerRequest) (adapters.CustomerResponse, error) {
@@ -132,6 +133,16 @@ func (s *customerService) Delete(ctx context.Context, id string) error {
 		return nil
 	}
 	c := customers[0]
+
+	// A customer with service orders cannot be deleted. An unavailable Service Order answers an
+	// error, so nothing is deleted when the answer is unknown.
+	hasOrders, err := s.orders.HasCustomerOrders(ctx, id)
+	if err != nil {
+		return err
+	}
+	if hasOrders {
+		return domain.ErrCustomerHasServiceOrders
+	}
 
 	return s.uow.Execute(ctx,
 		func(txCtx context.Context) error {

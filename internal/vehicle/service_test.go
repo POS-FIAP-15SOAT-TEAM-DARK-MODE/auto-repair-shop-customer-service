@@ -174,7 +174,7 @@ func TestService_Create(t *testing.T) {
 			if tt.setupMocks != nil {
 				tt.setupMocks(exec, repo)
 			}
-			service := NewService(exec, repo, id.NewNoopIDGenerator("mock-id"))
+			service := NewService(exec, repo, id.NewNoopIDGenerator("mock-id"), noVehicleOrders{})
 
 			resp, err := service.Create(ctx, tt.vehicle)
 
@@ -307,7 +307,7 @@ func TestService_List(t *testing.T) {
 			if tt.setupMocks != nil {
 				tt.setupMocks(repo, tt.params)
 			}
-			service := NewService(nil, repo, nil)
+			service := NewService(nil, repo, nil, noVehicleOrders{})
 			resp, err := service.List(ctx, tt.params)
 			assert.Equal(t, tt.wantResp, resp)
 			assert.Equal(t, tt.wantErr, err)
@@ -493,7 +493,7 @@ func TestService_Edit(t *testing.T) {
 			if tt.setupMocks != nil {
 				tt.setupMocks(exec, repo)
 			}
-			service := NewService(exec, repo, nil)
+			service := NewService(exec, repo, nil, noVehicleOrders{})
 
 			resp, err := service.Edit(ctx, tt.id, tt.vehicle)
 
@@ -562,7 +562,7 @@ func TestService_Delete(t *testing.T) {
 			if tt.setupMocks != nil {
 				tt.setupMocks(exec, repo, tt.id)
 			}
-			service := NewService(exec, repo, nil)
+			service := NewService(exec, repo, nil, noVehicleOrders{})
 
 			err := service.Delete(ctx, tt.id)
 			assert.Equal(t, tt.wantErr, err)
@@ -639,7 +639,7 @@ func TestVehicleService_FindById(t *testing.T) {
 			repo := domainMocks.NewVehicleRepository(t)
 			tc.mockSetup(repo)
 
-			svc := NewService(exec, repo, nil)
+			svc := NewService(exec, repo, nil, noVehicleOrders{})
 			got, err := svc.FindById(context.Background(), tc.id)
 
 			assert.ErrorIs(t, err, tc.wantErr)

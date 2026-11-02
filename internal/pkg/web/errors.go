@@ -123,7 +123,7 @@ func validationMessages(err error) []string {
 // notFoundErrors and conflictDomainErrors are the domain sentinels whose messages may be returned to the client.
 var (
 	notFoundErrors       = []error{vehicleDomain.ErrVehicleNotFound, customerDomain.ErrCustomerNotFound}
-	conflictDomainErrors = []error{customerDomain.ErrCustomerHasServiceOrders}
+	conflictDomainErrors = []error{customerDomain.ErrCustomerHasServiceOrders, vehicleDomain.ErrVehicleHasServiceOrders}
 )
 
 // IsInfrastructure reports whether err comes from the data layer (constraint violation, conflict or
@@ -186,9 +186,8 @@ func isInternalServerError(err error) bool {
 func isConflictError(err error) bool {
 	return errors.Is(err, app.ErrDataConflict) ||
 		errors.Is(err, app.ErrInfraConflict) ||
-		// TODO(F6): the delete check for service orders is not performed here anymore (orders live in
-		// service-order-service); it is reintroduced via the internal REST of Service Order in F6.
-		errors.Is(err, customerDomain.ErrCustomerHasServiceOrders)
+		errors.Is(err, customerDomain.ErrCustomerHasServiceOrders) ||
+		errors.Is(err, vehicleDomain.ErrVehicleHasServiceOrders)
 }
 
 func isUnprocessableEntityError(err error) bool {

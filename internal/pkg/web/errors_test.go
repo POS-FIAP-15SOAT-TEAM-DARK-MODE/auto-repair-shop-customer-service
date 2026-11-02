@@ -110,6 +110,7 @@ func TestError_DomainMessageIsKept(t *testing.T) {
 		{"404 customer", fmt.Errorf("find 52998224725: %w", customerDomain.ErrCustomerNotFound), http.StatusNotFound, "customer not found"},
 		{"404 vehicle", fmt.Errorf("find ABC1D23: %w", vehicleDomain.ErrVehicleNotFound), http.StatusNotFound, "vehicle not found"},
 		{"409 service orders", fmt.Errorf("delete 7c9e: %w", customerDomain.ErrCustomerHasServiceOrders), http.StatusConflict, "customer has associated service orders"},
+		{"409 vehicle service orders", fmt.Errorf("delete ABC1D23: %w", vehicleDomain.ErrVehicleHasServiceOrders), http.StatusConflict, "vehicle has associated service orders"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
