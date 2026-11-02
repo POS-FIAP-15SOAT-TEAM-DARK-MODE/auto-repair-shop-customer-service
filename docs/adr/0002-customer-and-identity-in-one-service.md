@@ -28,3 +28,7 @@ Service order, work, supply and stock live in other services and keep no copy of
 - Customer and user changes stay atomic without distributed transactions.
 - The lambda compatibility is covered by an integration test (`internal/integration/lambda_compat_test.go`) that runs the two literal queries as `lambda_auth_ro` and checks that writes are denied.
 - The `JWT_SECRET` is shared by every service that validates tokens; rotation requires a coordinated change (same value in all secrets).
+
+## Update
+
+Update: a checagem de ordens de serviço foi reintroduzida via `GET /internal/service-orders/exists` do Service Order (`customer_id` ou `vehicle_id`). Com ordens, a exclusão responde `409`; com o Service Order indisponível, responde `502` e nada é excluído.
