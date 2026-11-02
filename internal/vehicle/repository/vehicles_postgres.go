@@ -75,7 +75,7 @@ func (r *postgresRepository) Delete(ctx context.Context, id string) error {
 	}
 
 	if _, err = tx.ExecContext(ctx, deleteVehicle, id); err != nil {
-		logger.Of(ctx).Warn("vehicle repository", zap.String("operation", "delete"), zap.Error(err))
+		logger.Of(ctx).Warn("vehicle.delete_failed", zap.String("operation", "delete"), zap.Error(err))
 		return pgPkg.Error(ctx, err)
 	}
 

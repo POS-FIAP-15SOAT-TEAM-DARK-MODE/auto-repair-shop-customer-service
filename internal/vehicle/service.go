@@ -12,6 +12,7 @@ import (
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/vehicle/adapters"
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/vehicle/domain"
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/vehicle/interfaces"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -62,6 +63,7 @@ func (svc *vehicleService) Create(ctx context.Context, vehicleAdapter adapters.C
 		return adapters.VehicleResponse{}, err
 	}
 
+	logger.Of(ctx).Info("vehicle.created", zap.String("vehicle_id", vehicle.ID))
 	return adapters.VehicleDomainToResponse(*vehicle), nil
 }
 
@@ -151,9 +153,15 @@ func (svc *vehicleService) Delete(ctx context.Context, id string) error {
 		return domain.ErrInvalidVehicleId
 	}
 
-	return svc.uow.Execute(ctx, func(transactionContext context.Context) error {
+	err := svc.uow.Execute(ctx, func(transactionContext context.Context) error {
 		return svc.repo.Delete(transactionContext, id)
 	})
+	if err != nil {
+		return err
+	}
+
+	logger.Of(ctx).Info("vehicle.deleted", zap.String("vehicle_id", id))
+	return nil
 }
 
 func (svc *vehicleService) FindById(ctx context.Context, id string) (domain.Vehicle, error) {
