@@ -61,29 +61,47 @@ func IsJoined(err error) bool {
 	return errors.As(err, &uw)
 }
 
+// notFoundErrors and conflictDomainErrors are the domain sentinels whose messages may be returned to the client.
+var (
+	notFoundErrors       = []error{vehicleDomain.ErrVehicleNotFound, customerDomain.ErrCustomerNotFound}
+	conflictDomainErrors = []error{customerDomain.ErrCustomerHasServiceOrders}
+)
+
+// IsInfrastructure reports whether err comes from the data layer (constraint violation, conflict or
+// transient failure). Its cause is only logged; the client receives a fixed message.
+func IsInfrastructure(err error) bool {
+	return errors.Is(err, app.ErrDataConflict) ||
+		errors.Is(err, app.ErrInfraConflict) ||
+		errors.Is(err, app.ErrDataViolation)
+}
+
 // buildErrorMessages formats the error messages based on status code.
+// Causes of 5XX and infrastructure 409/422 never reach the body; they are logged by the caller.
 func buildErrorMessages(err error, status int) ([]string, string) {
 	switch status {
 	case http.StatusUnauthorized, http.StatusForbidden, http.StatusBadRequest:
 		// For 4XX BadRequest provide stack of errors.
 		return unwrapAll(err), ""
 	case http.StatusNotFound:
-		return nil, err.Error()
-	case http.StatusConflict, http.StatusUnprocessableEntity, http.StatusInternalServerError:
-		// For 409/422 and 5XX unwrap recursively and return the innermost (root cause) error message.
-		root := err
-		for {
-			unwrapped := errors.Unwrap(root)
-			if unwrapped == nil {
-				break
-			}
-			root = unwrapped
-		}
-		return nil, root.Error()
+		return nil, domainMessage(err, "not found", notFoundErrors...)
+	case http.StatusConflict:
+		return nil, domainMessage(err, "conflict", conflictDomainErrors...)
+	case http.StatusUnprocessableEntity:
+		return nil, "invalid data"
 	default:
-		// For any other case, generic error message.
-		return nil, "Internal Server Error"
+		return nil, "internal server error"
 	}
+}
+
+// domainMessage returns the message of the first known domain sentinel matching err, so the body
+// never carries the text of a wrapped cause. It returns fallback when no sentinel matches.
+func domainMessage(err error, fallback string, sentinels ...error) string {
+	for _, s := range sentinels {
+		if errors.Is(err, s) {
+			return s.Error()
+		}
+	}
+	return fallback
 }
 
 func isBadRequestError(err error) bool {

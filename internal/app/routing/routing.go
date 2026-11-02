@@ -66,6 +66,16 @@ func mountSwaggerUI(router *gin.Engine) {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger.yaml")))
 }
 
+// respondError writes the standard error body. The full error (with its root cause) is logged
+// for 5XX and for infrastructure conflicts/violations, with the request_id carried by ctx.
+func respondError(ctx context.Context, c *gin.Context, err error) {
+	status, errResp := web.Error(err)
+	if status >= http2.StatusInternalServerError || web.IsInfrastructure(err) {
+		logger.Of(ctx).Error(err, zap.Int("status", status))
+	}
+	c.JSON(status, errResp)
+}
+
 func GinOnlyErrorHandler(cb func(context.Context, *http2.Request) error, customStatus ...int) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -76,8 +86,7 @@ func GinOnlyErrorHandler(cb func(context.Context, *http2.Request) error, customS
 		}
 
 		if err := cb(ctx, c.Request); err != nil {
-			status, errResp := web.Error(err)
-			c.JSON(status, errResp)
+			respondError(ctx, c, err)
 			return
 		}
 
@@ -103,8 +112,7 @@ func GinHandler[T any](cb func(context.Context, *http2.Request) (T, error), cust
 
 		resp, err := cb(ctx, c.Request)
 		if err != nil {
-			status, errResp := web.Error(err)
-			c.JSON(status, errResp)
+			respondError(ctx, c, err)
 			return
 		}
 
