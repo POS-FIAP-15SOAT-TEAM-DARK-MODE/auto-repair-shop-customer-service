@@ -2,10 +2,9 @@ package middleware
 
 import (
 	"crypto/subtle"
+	"net/http"
 	"os"
 
-	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/auth/domain"
-	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/pkg/web"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,8 +18,7 @@ func InternalAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		got := c.GetHeader(internalTokenHeader)
 		if expected == "" || subtle.ConstantTimeCompare([]byte(got), []byte(expected)) != 1 {
-			status, body := web.Error(domain.ErrInvalidUserCredentials)
-			c.AbortWithStatusJSON(status, body)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "error": "Unauthorized"})
 			return
 		}
 		c.Next()
