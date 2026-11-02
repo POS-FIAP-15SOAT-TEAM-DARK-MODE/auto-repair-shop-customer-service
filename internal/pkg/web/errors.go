@@ -86,6 +86,8 @@ func getHTTPStatus(err error) int {
 		return http.StatusConflict
 	case isUnprocessableEntityError(err):
 		return http.StatusUnprocessableEntity
+	case isBadGatewayError(err):
+		return http.StatusBadGateway
 	default:
 		return http.StatusInternalServerError
 	}
@@ -148,6 +150,8 @@ func buildErrorMessages(err error, status int) ([]string, string) {
 		return nil, domainMessage(err, "conflict", conflictDomainErrors...)
 	case http.StatusUnprocessableEntity:
 		return nil, "invalid data"
+	case http.StatusBadGateway:
+		return nil, "upstream unavailable"
 	default:
 		return nil, "internal server error"
 	}
@@ -189,6 +193,10 @@ func isConflictError(err error) bool {
 
 func isUnprocessableEntityError(err error) bool {
 	return errors.Is(err, app.ErrDataViolation)
+}
+
+func isBadGatewayError(err error) bool {
+	return errors.Is(err, app.ErrUpstreamUnavailable)
 }
 
 func isForbidden(err error) bool {
