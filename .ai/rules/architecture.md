@@ -3,30 +3,35 @@
 ## Layer Map
 
 ```
-HTTP → Handler (infra/handler/*) → Service (internal/services/*) → Repository (infra/repository/*) → PostgreSQL
-                                         ↕
-                               Domain (internal/domain/*)
+HTTP → Routing (internal/app/routing) → Controller (internal/<domain>/controller*.go)
+     → Service (internal/<domain>/service*.go) → Repository (internal/<domain>/repository/*) → PostgreSQL
+                                ↕
+                      Domain (internal/<domain>/domain/*)
 ```
 
+`<domain>` is `auth`, `customer` or `vehicle`. Each domain folder has `adapters/` (DTOs), `interfaces/` (ports, mocks in `interfaces/mocks/`), `domain/` (entities and errors), `repository/` and `di.go`. Shared infrastructure lives in `internal/pkg/*`; `internal/clients/serviceorder` is the HTTP client for the Service Order service.
+
 ## Layer Contracts
-- **Handler**: parse + validate HTTP input, call service, return response — zero business logic.
-- **Service**: all business logic (customer + user creation in one unit of work, role checks, document validation).
-- **Repository**: all SQL via `lib/pq` — no queries outside repositories.
-- **Domain**: framework-free structs + validation methods + service/repository interfaces.
+- **Controller** (the HTTP handler): parse and validate HTTP input, call the service, return the response — zero business logic. Gin types stay in `internal/app/`; controllers receive `*http.Request`.
+- **Service**: all business logic (customer + user creation in one unit of work, role checks, document validation, service-order checks before delete).
+- **Repository**: all SQL via `database/sql` + `lib/pq` — no queries outside repositories.
+- **Domain**: structs + validation methods + sentinel errors. No Gin, no `lib/pq`.
 
 ## DI Root
-`internal/infra/factory/http.go` — single wiring file: creates DB, repos, services, handlers, passes into `HandlersWrapper`. All constructor injection happens here.
+- `internal/app/bootstrap/bootstrap.go` — builds the router, middlewares and HTTP server, and calls `httpContainer(db)`.
+- `internal/<domain>/di.go` — constructors (`NewHTTPController(db)`, `NewInternalHTTPController(db)`, `NewService(...)`).
+- `internal/app/container/handlers.go` — `HandlersWrapper` (controllers) and `Middlewares`.
 
 ## Repository DB Connection Pattern
-Repositories hold no `*sql.DB`. Connection comes from context, injected by UoW:
-- **Mutating ops** (inside tx): `postgres.GetTransaction(ctx)` → returns `*sql.Tx` stored by UoW `OnStart` hook.
-- **Read-only ops**: `postgres.GetOneTimeTransaction(ctx)` → opens a fresh `*sql.DB` connection.
+Repositories hold no `*sql.DB`. The connection comes from the context, set by the UoW (`internal/pkg/uow`):
+- **Mutating ops** (inside a UoW step): `uow.GetTransaction(ctx)` → `*sql.Tx` stored by the `OnStart` hook.
+- **Read-only ops**: `uow.GetOneTimeTransaction(ctx)` → returns the shared `*sql.DB` pool (`app.DBConnect()`).
 
 ## Unit of Work
 ```go
-uow.Execute(ctx, func1, func2, ...)
+uow.Execute(ctx, step1, step2, ...)
 ```
-UoW begins a transaction, injects it into context, runs all steps, then commits or rolls back. Services must wrap all mutating repository calls in `uow.Execute`.
+`uow.NewTransactionalUoW(db)` begins a transaction, injects it into the context, runs all steps, then commits or rolls back. `uow.NewInMemoryUoW()` is the test double. Services wrap all mutating repository calls in `uow.Execute`.
 
 ## Dynamic SQL
 Use `db.QueryBuilder(baseQuery)` from `internal/pkg/db/`:
@@ -37,3 +42,4 @@ qb.OrderBy(field, db.ASC)
 qb.AddPagination(limit, offset)
 query, args := qb.Build()
 ```
+Used by `internal/vehicle/repository` (list and count with filters).

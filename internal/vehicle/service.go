@@ -12,6 +12,7 @@ import (
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/vehicle/adapters"
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/vehicle/domain"
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/vehicle/interfaces"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -19,13 +20,15 @@ type vehicleService struct {
 	uow         uow.Executor
 	repo        interfaces.VehicleRepository
 	idGenerator id.Generator
+	orders      interfaces.ServiceOrderChecker
 }
 
-func NewService(uow uow.Executor, repo interfaces.VehicleRepository, idGenerator id.Generator) *vehicleService {
+func NewService(uow uow.Executor, repo interfaces.VehicleRepository, idGenerator id.Generator, orders interfaces.ServiceOrderChecker) *vehicleService {
 	return &vehicleService{
 		uow:         uow,
 		repo:        repo,
 		idGenerator: idGenerator,
+		orders:      orders,
 	}
 }
 
@@ -62,6 +65,7 @@ func (svc *vehicleService) Create(ctx context.Context, vehicleAdapter adapters.C
 		return adapters.VehicleResponse{}, err
 	}
 
+	logger.Of(ctx).Info("vehicle.created", zap.String("vehicle_id", vehicle.ID))
 	return adapters.VehicleDomainToResponse(*vehicle), nil
 }
 
@@ -151,9 +155,25 @@ func (svc *vehicleService) Delete(ctx context.Context, id string) error {
 		return domain.ErrInvalidVehicleId
 	}
 
-	return svc.uow.Execute(ctx, func(transactionContext context.Context) error {
+	// A vehicle with service orders cannot be deleted. An unavailable Service Order answers an
+	// error, so nothing is deleted when the answer is unknown.
+	hasOrders, err := svc.orders.HasVehicleOrders(ctx, id)
+	if err != nil {
+		return err
+	}
+	if hasOrders {
+		return domain.ErrVehicleHasServiceOrders
+	}
+
+	err = svc.uow.Execute(ctx, func(transactionContext context.Context) error {
 		return svc.repo.Delete(transactionContext, id)
 	})
+	if err != nil {
+		return err
+	}
+
+	logger.Of(ctx).Info("vehicle.deleted", zap.String("vehicle_id", id))
+	return nil
 }
 
 func (svc *vehicleService) FindById(ctx context.Context, id string) (domain.Vehicle, error) {

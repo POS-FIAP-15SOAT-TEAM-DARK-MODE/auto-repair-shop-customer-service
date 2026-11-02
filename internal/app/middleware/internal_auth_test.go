@@ -43,7 +43,7 @@ func TestInternalAuth_MissingOrWrongToken(t *testing.T) {
 	for _, token := range []string{"", "wrong", "secret-token-x"} {
 		w := doInternal(t, r, token)
 		require.Equal(t, http.StatusUnauthorized, w.Code, "token=%q", token)
-		assert.Contains(t, w.Body.String(), `"code":401`)
+		assert.JSONEq(t, `{"code":401,"error":"Unauthorized"}`, w.Body.String())
 	}
 }
 

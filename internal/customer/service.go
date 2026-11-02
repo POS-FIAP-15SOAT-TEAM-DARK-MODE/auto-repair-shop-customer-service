@@ -9,17 +9,20 @@ import (
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/customer/adapters"
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/customer/domain"
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/customer/interfaces"
+	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/pkg/logger"
 	"github.com/POS-FIAP-15SOAT-TEAM-DARK-MODE/auto-repair-shop-customer-service/internal/pkg/uow"
+	"go.uber.org/zap"
 )
 
 type customerService struct {
 	uow          uow.Executor
 	customerRepo interfaces.CustomerRepository
 	authRepo     authInterfaces.AuthRepository
+	orders       interfaces.ServiceOrderChecker
 }
 
-func NewService(u uow.Executor, customerRepo interfaces.CustomerRepository, authRepo authInterfaces.AuthRepository) interfaces.CustomerService {
-	return &customerService{uow: u, customerRepo: customerRepo, authRepo: authRepo}
+func NewService(u uow.Executor, customerRepo interfaces.CustomerRepository, authRepo authInterfaces.AuthRepository, orders interfaces.ServiceOrderChecker) interfaces.CustomerService {
+	return &customerService{uow: u, customerRepo: customerRepo, authRepo: authRepo, orders: orders}
 }
 
 func (s *customerService) Create(ctx context.Context, req adapters.CreateCustomerRequest) (adapters.CustomerResponse, error) {
@@ -53,6 +56,7 @@ func (s *customerService) Create(ctx context.Context, req adapters.CreateCustome
 		return adapters.CustomerResponse{}, err
 	}
 
+	logger.Of(ctx).Info("customer.created", zap.String("customer_id", customer.ID))
 	return domainToResponse(*customer), nil
 }
 
@@ -133,7 +137,17 @@ func (s *customerService) Delete(ctx context.Context, id string) error {
 	}
 	c := customers[0]
 
-	return s.uow.Execute(ctx,
+	// A customer with service orders cannot be deleted. An unavailable Service Order answers an
+	// error, so nothing is deleted when the answer is unknown.
+	hasOrders, err := s.orders.HasCustomerOrders(ctx, id)
+	if err != nil {
+		return err
+	}
+	if hasOrders {
+		return domain.ErrCustomerHasServiceOrders
+	}
+
+	err = s.uow.Execute(ctx,
 		func(txCtx context.Context) error {
 			return s.customerRepo.Delete(txCtx, id)
 		},
@@ -141,6 +155,12 @@ func (s *customerService) Delete(ctx context.Context, id string) error {
 			return s.authRepo.Delete(txCtx, c.UserID)
 		},
 	)
+	if err != nil {
+		return err
+	}
+
+	logger.Of(ctx).Info("customer.deleted", zap.String("customer_id", id))
+	return nil
 }
 
 func domainToResponse(c domain.Customer) adapters.CustomerResponse {

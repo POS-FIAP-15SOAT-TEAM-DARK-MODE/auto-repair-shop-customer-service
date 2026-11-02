@@ -85,8 +85,10 @@ Databases seeded before this change contain formatted documents. Recreate them w
 | `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | `localhost`, `5432`, `postgres`, `postgres`, `customer` | |
 | `POSTGRES_SSLMODE` | `disable` | `require` on RDS |
 | `JWT_SECRET`, `JWT_EXPIRES_IN` | `your_jwt_secret`, `24h` | The same `JWT_SECRET` in every service |
-| `BCRYPT_COST` | `12` (min. 12 in production) | Use `4` only in tests |
+| `BCRYPT_COST` | `10` in code when unset (`bcrypt.DefaultCost`); `12` in the k8s manifests and in the seed | Use `4` only in tests. Min. 12 in production is the team rule, not enforced by code yet |
 | `INTERNAL_TOKEN` | — | Empty value rejects every `/internal/*` call |
+| `SERVICE_ORDER_URL` | `http://service-order-service:8086` | Checked before deleting a customer or vehicle |
+| `SERVICE_NAME` | `customer-service` | Value of the `service` field in every log line |
 | `SEED_ENABLED` | `false` | Never `true` in prd |
 | `LOG_LEVEL` | `INFO` | |
 
@@ -100,13 +102,22 @@ make test-integration     # needs Postgres with the migrations applied (CI does 
 
 Unit tests run without a database. Integration tests (`//go:build integration`) cover auth, customers, vehicles, the internal routes and the lambda compatibility.
 
-Coverage gate: the CI `coverage` job requires at least **80%** total coverage **excluding generated mocks** (`/mocks/` paths, mockery output), the same exclusion as `sonar.exclusions=**/mocks/**` in `sonar-project.properties`. Current result: 90.2% without mocks (55.8% if the mocks are counted).
+Coverage gate: the CI `coverage` job requires at least **80%** total coverage **excluding generated mocks** (`/mocks/` paths, mockery output), the same exclusion as `sonar.exclusions=**/mocks/**` in `sonar-project.properties`.
+
+Measured with `LOG_LEVEL=PANIC go test ./... --race -coverprofile=coverage.out` on the `chore/fa-cleanup` branch:
+
+| Measure | Result |
+|---|---|
+| Total, without `/mocks/` (gate) | **90.9%** |
+| Total, with mocks | 57.4% |
+
+Per package (without mocks): `internal/auth/repository` 70.2% (below the 90% target for authentication), `internal/pkg/db` 84.2%, `internal/vehicle/adapters` 83.3%, `internal/app` 76.2%; the others are 90% or more.
 
 ## Limitações conhecidas
 
-- **Exclusão de cliente sem checagem de ordens de serviço.** `DELETE /v1/customers/:id` não verifica ordens de serviço: elas moram em outro serviço e este serviço não tem acesso à tabela. A verificação será reintroduzida via REST interno do Service Order na fase F6 (`TODO(F6)` em `internal/pkg/web/errors.go` e `internal/customer/domain/customer_errors.go`).
+- **Exclusão de cliente e veículo depende do Service Order.** Antes de excluir, `DELETE /v1/customers/:id` e `DELETE /v1/vehicles/:id` consultam `GET /internal/service-orders/exists` (`SERVICE_ORDER_URL`, timeout 3 s, sem retry). Com ordens, respondem `409`; se o Service Order estiver indisponível, respondem `502` e não excluem. Ver `contracts/internal-rest.md`, seção Service Order.
 - **Login do admin não verificado.** A senha original do `admin@email.com` não está documentada no repositório. O hash bcrypt foi copiado literalmente da migration `000002` do monólito, sem alteração.
-- **Lint local.** `golangci-lint` v2.15 aponta 8 itens em código copiado do monólito (`internal/pkg/db/*`, `internal/customer/domain/customer.go`), sem alteração. O pre-commit do CI usa a versão fixada no `.pre-commit-config.yaml`.
+- **Lint local.** `golangci-lint` v2.15 aponta 12 itens (errcheck 1, govet 3, staticcheck 8) em `internal/pkg/db/*`, `internal/pkg/logger/logger.go`, `internal/customer/*` e `internal/clients/serviceorder/client.go`. Não foram alterados na limpeza A7 para não mudar comportamento. O pre-commit do CI usa a versão fixada no `.pre-commit-config.yaml`.
 
 
 ## Kubernetes
@@ -121,6 +132,7 @@ internal/app/           bootstrap, routing, container, middlewares, DB connectio
 internal/auth/          users, roles, login
 internal/customer/      customers (+ internal route)
 internal/vehicle/       vehicles (+ internal route)
+internal/clients/       HTTP client of the Service Order service
 internal/pkg/           shared infrastructure (jwt, uow, db, logger, metrics, web)
 internal/integration/   integration tests (build tag integration)
 migrations/             golang-migrate SQL

@@ -35,7 +35,7 @@ func NewController(svc interfaces.VehicleService) *vehicleController {
 func (ctrl *vehicleController) Create(ctx context.Context, req *http.Request) (adapters.VehicleResponse, error) {
 	dto := adapters.CreateVehicle{}
 	if err := json.ParseJsonBodyToStruct(req.Body, &dto); err != nil {
-		logger.Of(ctx).Debug("Vehicle creation error",
+		logger.Of(ctx).Debug("vehicle.create_failed",
 			zap.String("operation", "create_vehicle"),
 			zap.Error(err),
 			zap.String("entity", "vehicle"),
@@ -45,7 +45,7 @@ func (ctrl *vehicleController) Create(ctx context.Context, req *http.Request) (a
 
 	resp, err := ctrl.svc.Create(ctx, dto)
 	if err != nil {
-		logger.Of(ctx).Debug("Vehicle creation error",
+		logger.Of(ctx).Debug("vehicle.create_failed",
 			zap.String("operation", "create_vehicle"),
 			zap.Error(err),
 			zap.String("entity", "vehicle"),
@@ -78,7 +78,7 @@ func (ctrl *vehicleController) List(ctx context.Context, req *http.Request) (ada
 		PageSize:   pgSize,
 	})
 	if err != nil {
-		logger.Of(ctx).Debug("get vehicles error",
+		logger.Of(ctx).Debug("vehicle.list_failed",
 			zap.String("operation", "list_vehicles"),
 			zap.Error(err),
 			zap.String("entity", "vehicle"),
@@ -91,7 +91,7 @@ func (ctrl *vehicleController) List(ctx context.Context, req *http.Request) (ada
 func (ctrl *vehicleController) Edit(ctx context.Context, req *http.Request) (adapters.VehicleResponse, error) {
 	dto := adapters.CreateVehicle{}
 	if err := json.ParseJsonBodyToStruct(req.Body, &dto); err != nil {
-		logger.Of(ctx).Debug("Vehicle validation error",
+		logger.Of(ctx).Debug("vehicle.update_failed",
 			zap.String("operation", "update_vehicle"),
 			zap.Error(err),
 			zap.String("entity", "vehicle"),
@@ -102,7 +102,7 @@ func (ctrl *vehicleController) Edit(ctx context.Context, req *http.Request) (ada
 	id, _ := ctx.Value(idParam).(string)
 	res, err := ctrl.svc.Edit(ctx, id, dto)
 	if err != nil {
-		logger.Of(ctx).Debug("Vehicle validation error",
+		logger.Of(ctx).Debug("vehicle.update_failed",
 			zap.String("operation", "update_vehicle"),
 			zap.Error(err),
 			zap.String("entity", "vehicle"),
@@ -116,7 +116,7 @@ func (ctrl *vehicleController) Edit(ctx context.Context, req *http.Request) (ada
 func (ctrl *vehicleController) Delete(ctx context.Context, req *http.Request) error {
 	id, _ := ctx.Value(idParam).(string)
 	if err := ctrl.svc.Delete(ctx, id); err != nil {
-		logger.Of(ctx).Debug("Vehicle delete error",
+		logger.Of(ctx).Debug("vehicle.delete_failed",
 			zap.String("operation", "delete_vehicle"),
 			zap.Error(err),
 			zap.String("entity", "vehicle"),

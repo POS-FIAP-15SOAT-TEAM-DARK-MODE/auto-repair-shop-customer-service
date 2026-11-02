@@ -66,6 +66,15 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 401
+                error: invalid user credentials
         '500':
           description: Internal server error
           content:
@@ -98,6 +107,15 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+        '409':
+          description: E-mail already registered
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 409
+                error: conflict
         '500':
           description: Internal server error
           content:
@@ -188,7 +206,7 @@ paths:
                 "$ref": "#/components/schemas/ErrorResponse"
               example:
                 code: 409
-                error: resource already exists
+                error: conflict
         '422':
           description: Business rule violation (e.g. constraint failure)
           content:
@@ -197,7 +215,7 @@ paths:
                 "$ref": "#/components/schemas/ErrorResponse"
               example:
                 code: 422
-                error: data violates business constraints
+                error: invalid data
         '500':
           description: Unexpected internal error
           content:
@@ -206,7 +224,7 @@ paths:
                 "$ref": "#/components/schemas/ErrorResponse"
               example:
                 code: 500
-                error: Internal Server Error
+                error: internal server error
     get:
       summary: Get customer by document
       description: Returns the customer matching the provided CPF or CNPJ document.
@@ -293,8 +311,7 @@ paths:
     put:
       summary: Update a customer
       description: Partially updates name, email and/or phone. All fields are optional
-        — only provided fields are changed. CPF and CNPJ are immutable. Returns 204
-        when the customer does not exist (idempotent).
+        — only provided fields are changed. CPF and CNPJ are immutable.
       tags:
       - Customers
       parameters:
@@ -319,8 +336,15 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/CustomerResponse"
-        '204':
-          description: Customer not found (no-op)
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 404
+                error: customer not found
         '400':
           description: Validation error (e.g. invalid name format, empty phone)
           content:
@@ -340,7 +364,7 @@ paths:
                 "$ref": "#/components/schemas/ErrorResponse"
               example:
                 code: 409
-                error: resource already exists
+                error: conflict
         '500':
           description: Unexpected internal error
           content:
@@ -365,6 +389,24 @@ paths:
       responses:
         '204':
           description: Customer deleted or not found
+        '409':
+          description: The customer has service orders (checked in the Service Order service); not deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 409
+                error: customer has associated service orders
+        '502':
+          description: The Service Order service is unavailable or failed; not deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 502
+                error: upstream unavailable
         '500':
           description: Unexpected internal error
           content:
@@ -373,9 +415,10 @@ paths:
                 "$ref": "#/components/schemas/ErrorResponse"
   "/v1/vehicles":
     get:
-      summary: Get vehicle by license plate
-      description: Retrieve a vehicle by its normalized license plate. The license
-        plate must follow supported formats (old or Mercosul).
+      summary: List vehicles by license plate or customer
+      description: Returns a paginated list of vehicles filtered by normalized license
+        plate (old or Mercosul format) or by customerId. At least one of the two filters
+        is required.
       tags:
       - Vehicle
       security:
@@ -383,13 +426,13 @@ paths:
       parameters:
       - in: query
         name: plate
-        required: true
+        required: false
         schema:
           type: string
         description: License plate (supports old and Mercosul formats)
       - in: query
         name: customerId
-        required: true
+        required: false
         schema:
           type: string
         description: customerId to search vehicles
@@ -411,17 +454,21 @@ paths:
         description: Number of items per page.
       responses:
         '200':
-          description: Vehicle found
+          description: Page of vehicles
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/VehicleResponse"
-        '404':
-          description: Vehicle not found
+                "$ref": "#/components/schemas/PaginatedVehicleResponse"
+        '400':
+          description: Neither plate nor customerId was provided
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 400
+                errors:
+                - invalid search vehicle params, a plate or customerId should be provided
         '500':
           description: Internal Server Error
           content:
@@ -445,6 +492,15 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/VehicleResponse"
+        '409':
+          description: License plate already registered
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 409
+                error: resource already exists
         '500':
           description: Internal Server Error
         '400':
@@ -474,6 +530,15 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/VehicleResponse"
+        '404':
+          description: Vehicle not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 404
+                error: vehicle not found
         '500':
           description: Internal Server Error
         '400':
@@ -493,6 +558,24 @@ paths:
       responses:
         '204':
           description: Successful deleted
+        '409':
+          description: The vehicle has service orders (checked in the Service Order service); not deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 409
+                error: vehicle has associated service orders
+        '502':
+          description: The Service Order service is unavailable or failed; not deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 502
+                error: upstream unavailable
         '500':
           description: Internal Server Error
         '400':
@@ -646,8 +729,9 @@ components:
           description: Sanitized CPF (11 digits) for INDIVIDUAL or CNPJ (14 chars)
             for COMPANY
           example: '11144477735'
-        company_name:
+        companyName:
           type: string
+          description: Company name for COMPANY customers; empty string for INDIVIDUAL.
           example: ''
         phone:
           type: string
@@ -692,6 +776,25 @@ components:
         year:
           type: integer
           example: 2019
+    PaginatedVehicleResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            "$ref": "#/components/schemas/VehicleResponse"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        pageSize:
+          type: integer
+          format: int64
+        page:
+          type: integer
+          format: int64
     VehicleResponse:
       type: object
       required:

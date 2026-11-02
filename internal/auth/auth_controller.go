@@ -22,7 +22,7 @@ func NewController(svc interfaces.AuthService) *authController {
 func (ctrl authController) Login(ctx context.Context, req *http.Request) (adapters.LoginResponse, error) {
 	dto := adapters.LoginRequest{}
 	if err := json.ParseJsonBodyToStruct(req.Body, &dto); err != nil {
-		logger.Of(ctx).Debug("Failed to bind login payload",
+		logger.Of(ctx).Debug("auth.login_payload_invalid",
 			zap.String("operation", "login"),
 			zap.Error(err),
 			zap.String("entity", "user"),
@@ -32,7 +32,7 @@ func (ctrl authController) Login(ctx context.Context, req *http.Request) (adapte
 
 	resp, err := ctrl.svc.Login(ctx, dto)
 	if err != nil {
-		logger.Of(ctx).Debug("Failed to register user",
+		logger.Of(ctx).Warn("auth.login_failed",
 			zap.String("operation", "log_in_user"),
 			zap.Error(err),
 			zap.String("entity", "user"),
@@ -46,7 +46,7 @@ func (ctrl authController) Login(ctx context.Context, req *http.Request) (adapte
 func (ctrl authController) Register(ctx context.Context, req *http.Request) (adapters.UserResponse, error) {
 	dto := adapters.CreateUserRequest{}
 	if err := json.ParseJsonBodyToStruct(req.Body, &dto); err != nil {
-		logger.Of(ctx).Debug("Failed to bind register payload",
+		logger.Of(ctx).Debug("user.register_payload_invalid",
 			zap.String("operation", "register"),
 			zap.Error(err),
 			zap.String("entity", "user"),
@@ -56,7 +56,7 @@ func (ctrl authController) Register(ctx context.Context, req *http.Request) (ada
 
 	resp, err := ctrl.svc.Register(ctx, dto)
 	if err != nil {
-		logger.Of(ctx).Debug("Failed to register user",
+		logger.Of(ctx).Debug("user.register_failed",
 			zap.String("operation", "register_user"),
 			zap.Error(err),
 			zap.String("entity", "user"),
@@ -70,7 +70,7 @@ func (ctrl authController) Register(ctx context.Context, req *http.Request) (ada
 func (ctrl authController) ChangeRole(ctx context.Context, req *http.Request) error {
 	dto := adapters.ChangeRoleRequest{}
 	if err := json.ParseJsonBodyToStruct(req.Body, &dto); err != nil {
-		logger.Of(ctx).Debug("Failed to bind change role payload",
+		logger.Of(ctx).Debug("user.role_change_payload_invalid",
 			zap.String("operation", "change_user_role"),
 			zap.Error(err),
 			zap.String("entity", "user"),
@@ -80,7 +80,7 @@ func (ctrl authController) ChangeRole(ctx context.Context, req *http.Request) er
 
 	id, _ := ctx.Value("id").(string)
 	if err := ctrl.svc.ChangeRole(ctx, id, dto); err != nil {
-		logger.Of(ctx).Debug("Failed to change user roles",
+		logger.Of(ctx).Debug("user.role_change_failed",
 			zap.String("operation", "change_user_role"),
 			zap.Error(err),
 			zap.String("entity", "user"),
