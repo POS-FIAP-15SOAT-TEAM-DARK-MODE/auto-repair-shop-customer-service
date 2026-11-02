@@ -13,7 +13,7 @@ Format:
 
 Types: `feat` · `fix` · `refactor` · `test` · `chore` · `docs` · `perf` · `style` · `revert`
 
-Scopes: `customer` · `vehicle` · `auth` · `user` · `bootstrap` · `internal` · `infra` · `db` · `api` · `integration` · `web` · `middleware` · `clients`
+Scopes (used in this repo): `customer` · `vehicle` · `auth` · `bootstrap` · `internal` · `infra` · `db` · `api` · `integration` · `web` · `middleware` · `clients` · `swagger` · `seed` · `k8s` · `ci`
 
 Rules:
 - Subject max 72 chars, lowercase, no trailing period.
@@ -33,10 +33,11 @@ Configured in `.pre-commit-config.yaml`:
 
 ## Development Commands
 ```bash
-make run          # start server on port 8080
-make test         # all tests with race detector
-make coverage     # HTML coverage report
-make docker-up    # build + start app + PostgreSQL
-make migrate-up   # apply pending migrations
+make run          # start server (PORT, default 8081; needs a reachable Postgres)
+make test         # all tests with race detector (LOG_LEVEL=PANIC)
+make coverage     # coverage.out + HTML report
+make up           # docker compose up --build (app + PostgreSQL + migrate)
+make down         # docker compose down -v
+make migrate-up   # apply pending migrations (needs the golang-migrate CLI)
 make mockgen      # regenerate all mocks via go generate
 ```
