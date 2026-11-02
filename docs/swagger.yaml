@@ -188,7 +188,7 @@ paths:
                 "$ref": "#/components/schemas/ErrorResponse"
               example:
                 code: 409
-                error: resource already exists
+                error: conflict
         '422':
           description: Business rule violation (e.g. constraint failure)
           content:
@@ -197,7 +197,7 @@ paths:
                 "$ref": "#/components/schemas/ErrorResponse"
               example:
                 code: 422
-                error: data violates business constraints
+                error: invalid data
         '500':
           description: Unexpected internal error
           content:
@@ -206,7 +206,7 @@ paths:
                 "$ref": "#/components/schemas/ErrorResponse"
               example:
                 code: 500
-                error: Internal Server Error
+                error: internal server error
     get:
       summary: Get customer by document
       description: Returns the customer matching the provided CPF or CNPJ document.
@@ -340,7 +340,7 @@ paths:
                 "$ref": "#/components/schemas/ErrorResponse"
               example:
                 code: 409
-                error: resource already exists
+                error: conflict
         '500':
           description: Unexpected internal error
           content:
