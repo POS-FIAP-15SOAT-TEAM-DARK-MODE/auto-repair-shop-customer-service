@@ -119,6 +119,66 @@ func TestError_DomainMessageIsKept(t *testing.T) {
 	}
 }
 
+// TestError_JoinIsValidationOnlyWhenEveryCauseIsValidation: a join is a 400 only when all its causes
+// are validation sentinels; the list then carries only those sentinels' messages.
+func TestError_JoinIsValidationOnlyWhenEveryCauseIsValidation(t *testing.T) {
+	t.Run("join of validation sentinels is 400 with the list", func(t *testing.T) {
+		status, body := web.Error(errors.Join(customerDomain.ErrInvalidCPF, customerDomain.ErrPhoneRequired))
+		assert.Equal(t, http.StatusBadRequest, status)
+		assert.Equal(t, []string{"invalid CPF", "phone is required"}, body.Errors)
+		assert.Empty(t, body.Error)
+	})
+
+	t.Run("wrapped join of validation sentinels is 400 without the wrapper text", func(t *testing.T) {
+		status, body := web.Error(fmt.Errorf("create customer 52998224725: %w",
+			errors.Join(customerDomain.ErrInvalidCPF, customerDomain.ErrCPFLength)))
+		assert.Equal(t, http.StatusBadRequest, status)
+		assert.Equal(t, []string{"invalid CPF", "CPF must have 11 digits"}, body.Errors)
+		assert.NotContains(t, body.Errors, "create customer 52998224725")
+	})
+
+	t.Run("join with a driver error is 500 without the driver text", func(t *testing.T) {
+		driverErr := errors.New(`pq: duplicate key value violates unique constraint "customers_document_key"`)
+		status, body := web.Error(errors.Join(customerDomain.ErrInvalidCPF, driverErr))
+		assert.Equal(t, http.StatusInternalServerError, status)
+		assert.Nil(t, body.Errors)
+		assert.Equal(t, "internal server error", body.Error)
+		assert.NotContains(t, body.Error, "pq")
+	})
+
+	t.Run("join with a domain error that is not validation is 500", func(t *testing.T) {
+		status, body := web.Error(errors.Join(customerDomain.ErrInvalidCPF, customerDomain.ErrCustomerNotFound))
+		assert.Equal(t, http.StatusInternalServerError, status)
+		assert.Nil(t, body.Errors)
+		assert.Equal(t, "internal server error", body.Error)
+	})
+
+	t.Run("single validation sentinel wrapped keeps only the sentinel message", func(t *testing.T) {
+		status, body := web.Error(fmt.Errorf("document 123: %w", customerDomain.ErrInvalidCPF))
+		assert.Equal(t, http.StatusBadRequest, status)
+		assert.Equal(t, []string{"invalid CPF"}, body.Errors)
+	})
+
+	t.Run("vehicle without customer is 400", func(t *testing.T) {
+		status, body := web.Error(vehicleDomain.ErrVehicleNoCustomerAssociated)
+		assert.Equal(t, http.StatusBadRequest, status)
+		assert.Equal(t, []string{"no customer associated to the vehicle"}, body.Errors)
+	})
+}
+
+// TestError_DomainAuthErrorsUseErrorString: domain 401 and 403 answer error (string), never the errors list.
+func TestError_DomainAuthErrorsUseErrorString(t *testing.T) {
+	status, body := web.Error(authDomain.ErrInvalidUserCredentials)
+	assert.Equal(t, http.StatusUnauthorized, status)
+	assert.Nil(t, body.Errors)
+	assert.Equal(t, "invalid user credentials", body.Error)
+
+	status, body = web.Error(customerDomain.ErrInvalidCustomerProperty)
+	assert.Equal(t, http.StatusForbidden, status)
+	assert.Nil(t, body.Errors)
+	assert.Equal(t, "customer not allowed to execute this operation", body.Error)
+}
+
 func TestIsInfrastructure(t *testing.T) {
 	assert.True(t, web.IsInfrastructure(fmt.Errorf("x: %w", app.ErrDataConflict)))
 	assert.True(t, web.IsInfrastructure(app.ErrInfraConflict))
