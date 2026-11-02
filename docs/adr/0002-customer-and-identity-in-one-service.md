@@ -32,3 +32,5 @@ Service order, work, supply and stock live in other services and keep no copy of
 ## Update
 
 Update: a checagem de ordens de serviço foi reintroduzida via `GET /internal/service-orders/exists` do Service Order (`customer_id` ou `vehicle_id`). Com ordens, a exclusão responde `409`; com o Service Order indisponível, responde `502` e nada é excluído.
+
+Update (limpeza A7): o `TODO(F6)` citado acima não existe mais no código; a checagem está implementada em `internal/customer/service.go` e `internal/vehicle/service.go`, com cliente em `internal/clients/serviceorder`. A decisão original permanece.
