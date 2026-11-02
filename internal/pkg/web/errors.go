@@ -67,14 +67,11 @@ var validationErrors = []error{
 }
 
 // getHTTPStatus determines the HTTP status code for a given error.
-// A joined error is a 400 only when every one of its causes is a validation sentinel; a join
-// with any other cause (infrastructure or unknown) is a generic 500.
+// If any validation sentinel is found anywhere in the error tree (wraps and joins), the answer is 400.
+// Otherwise the status comes from the other domain and infrastructure lists, and 500 when none matches.
 func getHTTPStatus(err error) int {
-	if _, ok := validationMessages(err); ok {
+	if len(validationMessages(err)) > 0 {
 		return http.StatusBadRequest
-	}
-	if IsJoined(err) {
-		return http.StatusInternalServerError
 	}
 	switch {
 	case isUnauthorizedError(err):
@@ -94,44 +91,31 @@ func getHTTPStatus(err error) int {
 	}
 }
 
-// IsJoined reports whether err is a join of several errors (errors.Join or a multi-%w wrap) at its top level.
-func IsJoined(err error) bool {
-	_, ok := err.(multiError)
-	return ok
-}
-
-type multiError interface {
-	Unwrap() []error
-}
-
-// validationMessages returns the messages of the validation sentinels that make up err, and whether
-// every cause of err is a validation error. A join with any other cause returns false.
-func validationMessages(err error) ([]string, bool) {
-	if multi, ok := err.(multiError); ok {
-		var msgs []string
-		for _, cause := range multi.Unwrap() {
-			causeMsgs, valid := validationMessages(cause)
-			if !valid {
-				return nil, false
+// validationMessages returns the messages of every validation sentinel found in the error tree of
+// err (through wraps and joins), in tree order. Any other cause in the tree is never included.
+func validationMessages(err error) []string {
+	var msgs []string
+	var walk func(e error)
+	walk = func(e error) {
+		if e == nil {
+			return
+		}
+		for _, s := range validationErrors {
+			if e == s {
+				msgs = append(msgs, s.Error())
 			}
-			msgs = append(msgs, causeMsgs...)
 		}
-		return msgs, len(msgs) > 0
-	}
-
-	// A single wrap around a join: the join decides, so the wrapper text never reaches the body.
-	if inner := errors.Unwrap(err); inner != nil {
-		if _, ok := inner.(multiError); ok {
-			return validationMessages(inner)
-		}
-	}
-
-	for _, s := range validationErrors {
-		if errors.Is(err, s) {
-			return []string{s.Error()}, true
+		switch u := e.(type) {
+		case interface{ Unwrap() []error }:
+			for _, cause := range u.Unwrap() {
+				walk(cause)
+			}
+		case interface{ Unwrap() error }:
+			walk(u.Unwrap())
 		}
 	}
-	return nil, false
+	walk(err)
+	return msgs
 }
 
 // notFoundErrors and conflictDomainErrors are the domain sentinels whose messages may be returned to the client.
@@ -153,8 +137,7 @@ func IsInfrastructure(err error) bool {
 func buildErrorMessages(err error, status int) ([]string, string) {
 	switch status {
 	case http.StatusBadRequest:
-		msgs, _ := validationMessages(err)
-		return msgs, ""
+		return validationMessages(err), ""
 	case http.StatusUnauthorized:
 		return nil, domainMessage(err, "Unauthorized", authDomain.ErrInvalidUserCredentials)
 	case http.StatusForbidden:

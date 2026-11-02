@@ -119,38 +119,50 @@ func TestError_DomainMessageIsKept(t *testing.T) {
 	}
 }
 
-// TestError_JoinIsValidationOnlyWhenEveryCauseIsValidation: a join is a 400 only when all its causes
-// are validation sentinels; the list then carries only those sentinels' messages.
-func TestError_JoinIsValidationOnlyWhenEveryCauseIsValidation(t *testing.T) {
-	t.Run("join of validation sentinels is 400 with the list", func(t *testing.T) {
+// TestError_ValidationSentinelsAnswer400 proves that a validation sentinel anywhere in the error tree
+// answers 400, and that the errors list carries only the matched sentinels' messages.
+func TestError_ValidationSentinelsAnswer400(t *testing.T) {
+	driverErr := errors.New(`pq: duplicate key value violates unique constraint "customers_document_key"`)
+	decimalErr := errors.New("decimal: cannot parse 'abc' as a number")
+
+	t.Run("join of validation sentinels lists each message", func(t *testing.T) {
 		status, body := web.Error(errors.Join(customerDomain.ErrInvalidCPF, customerDomain.ErrPhoneRequired))
 		assert.Equal(t, http.StatusBadRequest, status)
 		assert.Equal(t, []string{"invalid CPF", "phone is required"}, body.Errors)
 		assert.Empty(t, body.Error)
 	})
 
-	t.Run("wrapped join of validation sentinels is 400 without the wrapper text", func(t *testing.T) {
+	t.Run("wrapped join of validation sentinels has no wrapper text", func(t *testing.T) {
 		status, body := web.Error(fmt.Errorf("create customer 52998224725: %w",
 			errors.Join(customerDomain.ErrInvalidCPF, customerDomain.ErrCPFLength)))
 		assert.Equal(t, http.StatusBadRequest, status)
 		assert.Equal(t, []string{"invalid CPF", "CPF must have 11 digits"}, body.Errors)
-		assert.NotContains(t, body.Errors, "create customer 52998224725")
 	})
 
-	t.Run("join with a driver error is 500 without the driver text", func(t *testing.T) {
-		driverErr := errors.New(`pq: duplicate key value violates unique constraint "customers_document_key"`)
+	t.Run("validation with a driver cause is 400 with only the sentinel text", func(t *testing.T) {
 		status, body := web.Error(errors.Join(customerDomain.ErrInvalidCPF, driverErr))
-		assert.Equal(t, http.StatusInternalServerError, status)
-		assert.Nil(t, body.Errors)
-		assert.Equal(t, "internal server error", body.Error)
-		assert.NotContains(t, body.Error, "pq")
+		assert.Equal(t, http.StatusBadRequest, status)
+		assert.Equal(t, []string{"invalid CPF"}, body.Errors)
+		assert.NotContains(t, body.Errors, driverErr.Error())
 	})
 
-	t.Run("join with a domain error that is not validation is 500", func(t *testing.T) {
+	t.Run("validation with a domain cause that is not validation is 400", func(t *testing.T) {
 		status, body := web.Error(errors.Join(customerDomain.ErrInvalidCPF, customerDomain.ErrCustomerNotFound))
-		assert.Equal(t, http.StatusInternalServerError, status)
-		assert.Nil(t, body.Errors)
-		assert.Equal(t, "internal server error", body.Error)
+		assert.Equal(t, http.StatusBadRequest, status)
+		assert.Equal(t, []string{"invalid CPF"}, body.Errors)
+	})
+
+	t.Run("validation with an unknown cause in a %w wrap is 400 with only the sentinel text", func(t *testing.T) {
+		status, body := web.Error(fmt.Errorf("%w: %w", customerDomain.ErrInvalidCPF, decimalErr))
+		assert.Equal(t, http.StatusBadRequest, status)
+		assert.Equal(t, []string{"invalid CPF"}, body.Errors)
+		assert.NotContains(t, body.Errors, decimalErr.Error())
+	})
+
+	t.Run("document error together with a parsing error keeps both messages", func(t *testing.T) {
+		status, body := web.Error(errors.Join(customerDomain.ErrInvalidCPF, jsonv2.ErrJSONSyntax))
+		assert.Equal(t, http.StatusBadRequest, status)
+		assert.Equal(t, []string{"invalid CPF", "invalid JSON syntax"}, body.Errors)
 	})
 
 	t.Run("single validation sentinel wrapped keeps only the sentinel message", func(t *testing.T) {
@@ -163,6 +175,34 @@ func TestError_JoinIsValidationOnlyWhenEveryCauseIsValidation(t *testing.T) {
 		status, body := web.Error(vehicleDomain.ErrVehicleNoCustomerAssociated)
 		assert.Equal(t, http.StatusBadRequest, status)
 		assert.Equal(t, []string{"no customer associated to the vehicle"}, body.Errors)
+	})
+}
+
+// TestError_InfrastructureOrUnknownOnlyIsGeneric proves that errors without any validation sentinel
+// never reach the body: they answer a fixed message for their status.
+func TestError_InfrastructureOrUnknownOnlyIsGeneric(t *testing.T) {
+	driverErr := errors.New(`pq: duplicate key value violates unique constraint "customers_document_key"`)
+	decimalErr := errors.New("decimal: cannot parse 'abc' as a number")
+
+	t.Run("join of driver and unknown errors is 500", func(t *testing.T) {
+		status, body := web.Error(errors.Join(driverErr, decimalErr))
+		assert.Equal(t, http.StatusInternalServerError, status)
+		assert.Nil(t, body.Errors)
+		assert.Equal(t, "internal server error", body.Error)
+		assert.NotContains(t, body.Error, "pq")
+	})
+
+	t.Run("wrapped join of unknown errors is 500", func(t *testing.T) {
+		status, body := web.Error(fmt.Errorf("save: %w", errors.Join(driverErr, decimalErr)))
+		assert.Equal(t, http.StatusInternalServerError, status)
+		assert.Equal(t, "internal server error", body.Error)
+	})
+
+	t.Run("join of a conflict and a driver error is 409 with the generic message", func(t *testing.T) {
+		status, body := web.Error(errors.Join(app.ErrDataConflict, driverErr))
+		assert.Equal(t, http.StatusConflict, status)
+		assert.Equal(t, "conflict", body.Error)
+		assert.NotContains(t, body.Error, "pq")
 	})
 }
 
@@ -185,11 +225,6 @@ func TestIsInfrastructure(t *testing.T) {
 	assert.True(t, web.IsInfrastructure(app.ErrDataViolation))
 	assert.False(t, web.IsInfrastructure(customerDomain.ErrCustomerHasServiceOrders))
 	assert.False(t, web.IsInfrastructure(errors.New("boom")))
-}
-
-func TestIsJoined(t *testing.T) {
-	assert.True(t, web.IsJoined(errors.Join(errors.New("a"), errors.New("b"))))
-	assert.False(t, web.IsJoined(errors.New("a")))
 }
 
 func TestError_InvalidDocumentIsBadRequest(t *testing.T) {
