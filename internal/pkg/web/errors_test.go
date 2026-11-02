@@ -35,6 +35,7 @@ func TestError_StatusMapping(t *testing.T) {
 		{"unprocessable", app.ErrDataViolation, http.StatusUnprocessableEntity},
 		{"internal json", jsonv2.ErrJSONUnsupportedValue, http.StatusInternalServerError},
 		{"unknown", errors.New("boom"), http.StatusInternalServerError},
+		{"bad gateway", app.ErrUpstreamUnavailable, http.StatusBadGateway},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -82,6 +83,7 @@ func TestError_NeverLeaksInfrastructureCause(t *testing.T) {
 		{"500 driver", fmt.Errorf("query: %w", cause), http.StatusInternalServerError, "internal server error"},
 		{"500 json", fmt.Errorf("encode: %w", jsonv2.ErrJSONUnsupportedValue), http.StatusInternalServerError, "internal server error"},
 		{"500 unknown", errors.New(sensitive), http.StatusInternalServerError, "internal server error"},
+		{"502 upstream", fmt.Errorf("service order: %w: Get http://so/x?customer_id=%s", app.ErrUpstreamUnavailable, sensitive), http.StatusBadGateway, "upstream unavailable"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -108,6 +110,7 @@ func TestError_DomainMessageIsKept(t *testing.T) {
 		{"404 customer", fmt.Errorf("find 52998224725: %w", customerDomain.ErrCustomerNotFound), http.StatusNotFound, "customer not found"},
 		{"404 vehicle", fmt.Errorf("find ABC1D23: %w", vehicleDomain.ErrVehicleNotFound), http.StatusNotFound, "vehicle not found"},
 		{"409 service orders", fmt.Errorf("delete 7c9e: %w", customerDomain.ErrCustomerHasServiceOrders), http.StatusConflict, "customer has associated service orders"},
+		{"409 vehicle service orders", fmt.Errorf("delete ABC1D23: %w", vehicleDomain.ErrVehicleHasServiceOrders), http.StatusConflict, "vehicle has associated service orders"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

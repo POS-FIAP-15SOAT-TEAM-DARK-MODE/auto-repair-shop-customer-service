@@ -17,7 +17,7 @@ import (
 
 func setupService(t *testing.T) (*customerService, context.Context) {
 	t.Helper()
-	svc := NewService(uow.NewInMemoryUoW(), customerRepo.NewInMemory(), authRepo.NewInMemory()).(*customerService)
+	svc := NewService(uow.NewInMemoryUoW(), customerRepo.NewInMemory(), authRepo.NewInMemory(), &fakeOrders{}).(*customerService)
 	return svc, context.Background()
 }
 

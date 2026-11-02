@@ -104,7 +104,7 @@ Coverage gate: the CI `coverage` job requires at least **80%** total coverage **
 
 ## Limitações conhecidas
 
-- **Exclusão de cliente sem checagem de ordens de serviço.** `DELETE /v1/customers/:id` não verifica ordens de serviço: elas moram em outro serviço e este serviço não tem acesso à tabela. A verificação será reintroduzida via REST interno do Service Order na fase F6 (`TODO(F6)` em `internal/pkg/web/errors.go` e `internal/customer/domain/customer_errors.go`).
+- **Exclusão de cliente e veículo depende do Service Order.** Antes de excluir, `DELETE /v1/customers/:id` e `DELETE /v1/vehicles/:id` consultam `GET /internal/service-orders/exists` (`SERVICE_ORDER_URL`, timeout 3 s, sem retry). Com ordens, respondem `409`; se o Service Order estiver indisponível, respondem `502` e não excluem. Ver `contracts/internal-rest.md`, seção Service Order.
 - **Login do admin não verificado.** A senha original do `admin@email.com` não está documentada no repositório. O hash bcrypt foi copiado literalmente da migration `000002` do monólito, sem alteração.
 - **Lint local.** `golangci-lint` v2.15 aponta 8 itens em código copiado do monólito (`internal/pkg/db/*`, `internal/customer/domain/customer.go`), sem alteração. O pre-commit do CI usa a versão fixada no `.pre-commit-config.yaml`.
 

@@ -86,6 +86,8 @@ func getHTTPStatus(err error) int {
 		return http.StatusConflict
 	case isUnprocessableEntityError(err):
 		return http.StatusUnprocessableEntity
+	case isBadGatewayError(err):
+		return http.StatusBadGateway
 	default:
 		return http.StatusInternalServerError
 	}
@@ -121,7 +123,7 @@ func validationMessages(err error) []string {
 // notFoundErrors and conflictDomainErrors are the domain sentinels whose messages may be returned to the client.
 var (
 	notFoundErrors       = []error{vehicleDomain.ErrVehicleNotFound, customerDomain.ErrCustomerNotFound}
-	conflictDomainErrors = []error{customerDomain.ErrCustomerHasServiceOrders}
+	conflictDomainErrors = []error{customerDomain.ErrCustomerHasServiceOrders, vehicleDomain.ErrVehicleHasServiceOrders}
 )
 
 // IsInfrastructure reports whether err comes from the data layer (constraint violation, conflict or
@@ -148,6 +150,8 @@ func buildErrorMessages(err error, status int) ([]string, string) {
 		return nil, domainMessage(err, "conflict", conflictDomainErrors...)
 	case http.StatusUnprocessableEntity:
 		return nil, "invalid data"
+	case http.StatusBadGateway:
+		return nil, "upstream unavailable"
 	default:
 		return nil, "internal server error"
 	}
@@ -182,13 +186,16 @@ func isInternalServerError(err error) bool {
 func isConflictError(err error) bool {
 	return errors.Is(err, app.ErrDataConflict) ||
 		errors.Is(err, app.ErrInfraConflict) ||
-		// TODO(F6): the delete check for service orders is not performed here anymore (orders live in
-		// service-order-service); it is reintroduced via the internal REST of Service Order in F6.
-		errors.Is(err, customerDomain.ErrCustomerHasServiceOrders)
+		errors.Is(err, customerDomain.ErrCustomerHasServiceOrders) ||
+		errors.Is(err, vehicleDomain.ErrVehicleHasServiceOrders)
 }
 
 func isUnprocessableEntityError(err error) bool {
 	return errors.Is(err, app.ErrDataViolation)
+}
+
+func isBadGatewayError(err error) bool {
+	return errors.Is(err, app.ErrUpstreamUnavailable)
 }
 
 func isForbidden(err error) bool {

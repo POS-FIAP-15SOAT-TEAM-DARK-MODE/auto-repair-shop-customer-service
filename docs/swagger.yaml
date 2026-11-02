@@ -365,6 +365,24 @@ paths:
       responses:
         '204':
           description: Customer deleted or not found
+        '409':
+          description: The customer has service orders (checked in the Service Order service); not deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 409
+                error: customer has associated service orders
+        '502':
+          description: The Service Order service is unavailable or failed; not deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 502
+                error: upstream unavailable
         '500':
           description: Unexpected internal error
           content:
@@ -493,6 +511,24 @@ paths:
       responses:
         '204':
           description: Successful deleted
+        '409':
+          description: The vehicle has service orders (checked in the Service Order service); not deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 409
+                error: vehicle has associated service orders
+        '502':
+          description: The Service Order service is unavailable or failed; not deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+              example:
+                code: 502
+                error: upstream unavailable
         '500':
           description: Internal Server Error
         '400':
