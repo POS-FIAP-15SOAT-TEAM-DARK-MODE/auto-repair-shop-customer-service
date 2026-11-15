@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: auto-repair-shop
+
+# No in-cluster Postgres — the database is RDS (Terraform). The Secret is
+# produced by the External Secrets Operator from Secrets Manager (secrets.yaml).
+resources:
+  - ../../base
+  - secrets.yaml
+
+components:
+  - ../../components/observability
+
+# Image published to ECR. The pipeline overrides newTag with the commit SHA.
+images:
+  - name: auto-repair-shop-customer-service
+    newName: 000000000000.dkr.ecr.us-east-1.amazonaws.com/auto-repair-shop-customer-service
+    newTag: latest
+
+patches:
+  - path: patch-configmap.yaml
+    target:
+      kind: ConfigMap
+      name: customer-service-config
+  - path: patch-hpa.yaml
+    target:
+      kind: HorizontalPodAutoscaler
+      name: customer-service

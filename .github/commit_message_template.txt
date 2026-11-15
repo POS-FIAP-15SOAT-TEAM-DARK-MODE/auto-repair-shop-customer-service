@@ -1,0 +1,14 @@
+# <type>(<scope>): <short description>
+# |<---- max 72 characters ---->|
+#
+# Types: feat | fix | refactor | test | chore | docs | perf | style | revert
+#
+# Scopes: customer | vehicle | auth | bootstrap | internal | infra | db | api |
+#         integration | web | middleware | clients | swagger | seed | k8s | ci
+#
+# --- Examples ---
+# feat(vehicle): reject plates with invalid Mercosul format
+# fix(customer): return 409 when the customer has service orders
+# refactor(auth): extract JWT claims parsing to helper
+# test(customer): add edge cases for CNPJ check digits
+# chore(infra): update docker-compose postgres version
